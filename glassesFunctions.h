@@ -479,9 +479,3 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
     }
     GlassesPWM[X1][Y1] = 255;
 }
-
-void loadGraphicsFrame(int frame) {
-    for (int x = 0; x < 24; x++) {
-        GlassesBits[x][0] = pgm_read_byte(Graphics[frame]+x);
-    }
-}

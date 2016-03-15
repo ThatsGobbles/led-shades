@@ -112,7 +112,7 @@ void loop() {
             beatingHearts();
             break;
         case 1:
-            scrollMessage(0, SCROLL2X);
+            sines();
             break;
         case 2:
             fire();
@@ -139,7 +139,7 @@ void loop() {
             scrollMessage(2, SCROLL2X);
             break;
         case 10:
-            rain();
+            rain(true);
             break;
         case 11:
             plasma();

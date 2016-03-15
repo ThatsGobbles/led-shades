@@ -9,19 +9,36 @@ float offset  = 0;
 float plasIncr = -1;
 float plasVector = 0;
 
+#define SOLID 255
+#define EMPTY 0
+
+void expandByte(byte col, byte value) {
+    for (byte i = 0; i < 8; i++) {
+        GlassesPWM[col][i] = value & 0b10000000 ? SOLID : EMPTY;
+        value <<= 1;
+    }
+}
+
+void expandByteRev(byte col, byte value) {
+    for (byte i = 0; i < 8; i++) {
+        GlassesPWM[col][i] = value & 0b00000001 ? SOLID : EMPTY;
+        value >>= 1;
+    }
+}
+
 // Draw a sine wave on the bit array.
 // Speeds up and slows down in a cycle.
 void sines() {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
     }
 
     for (int i = 0; i < 24; i++) {
-        GlassesBits[i][0] = 3 << (int)(sin(i / 2.0 + incRval) * 3.5 + 3.5);
+        expandByte(i, 3 << (int)(sin(i / 2.0 + incRval) * 3.5 + 3.5));
     }
 
-    writeBitFrame(0, 0);
+    writePWMFrame(0);
 
     incRval += incr;
     if (incDir == 1) incr += 0.001;
@@ -117,7 +134,7 @@ void scrollMessage(byte message, byte mode) {
 int rainAction = 0;
 void sideRain(byte dir) {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
     }
 
@@ -129,21 +146,31 @@ void sideRain(byte dir) {
         tempRain = (1 << random(0,8)) | (1 << random(0,8));
 
         if (dir == 0) {
-            scrollBits(0,0);
-            GlassesBits[0][0] = tempRain;
+            scrollPWM(0);
+            expandByte(0, tempRain);
         }
         else {
-            scrollBits(1,0);
-            GlassesBits[23][0] = tempRain;
+            scrollPWM(1);
+            expandByte(23, tempRain);
         }
 
-        writeBitFrame(0, 0);
+        writePWMFrame(0);
     }
 }
 
-void rain() {
+byte vRainCols[24] = {0};
+const byte byteReverseLookup[16] = {
+0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
+0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf, };
+
+byte reverse(byte n) {
+   // Reverse the top and bottom nibble then swap them.
+   return (byteReverseLookup[n&0b1111] << 4) | byteReverseLookup[n>>4];
+}
+
+void rain(boolean up) {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
     }
 
@@ -151,13 +178,17 @@ void rain() {
         rainAction = 0;
 
         for (int i = 0; i < 24; i++) {
-            GlassesBits[i][0] <<= 1;
+            vRainCols[i] <<= 1;
         }
 
-        GlassesBits[random(0,24)][0] |= 1;
-        GlassesBits[random(0,24)][0] |= 1;
+        vRainCols[random(0,24)] |= 1;
+        vRainCols[random(0,24)] |= 1;
 
-        writeBitFrame(0, 0);
+        for (int i = 0; i < 24; i++) {
+            expandByte(i, up ? vRainCols[i] : reverse(vRainCols[i]));
+        }
+
+        writePWMFrame(0);
     }
 }
 
@@ -308,27 +339,27 @@ void rider() {
 // Simply grab a character from the font and put it in the 8x8 section of both sides of the glasses.
 void displayChar(int character) {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
     }
 
     loadCharBuffer(character);
 
     for (int i = 0; i < 8; i++) {
-        GlassesBits[i+1][0] = charBuffer[i];
-        GlassesBits[i+15][0] = charBuffer[i];
+        expandByte(i+1, charBuffer[i]);
+        expandByte(i+15, charBuffer[i]);
     }
 
-    writeBitFrame(0, 0);
+    writePWMFrame(0);
 }
 
 // Draw various emoticon style faces.
 int emotecounter = 0;
 byte currentEmote = 0;
-#define EMOTE_DELAY 100
+#define EMOTE_DELAY 10
 void emote() {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
         currentEmote = 0;
     }
@@ -338,67 +369,67 @@ void emote() {
             case 0:
                 loadCharBuffer('X');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+2][0] = charBuffer[i];
+                    expandByte(i+2, reverse(charBuffer[i]));
                 }
 
                 loadCharBuffer('X');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+15][0] = charBuffer[i];
+                    expandByte(i+15, reverse(charBuffer[i]));
                 }
                 break;
             case 1:
                 loadCharBuffer('?');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+2][0] = charBuffer[i];
+                    expandByte(i+2, reverse(charBuffer[i]));
                 }
 
                 loadCharBuffer('?');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+15][0] = charBuffer[i];
+                    expandByte(i+15, reverse(charBuffer[i]));
                 }
                 break;
             case 2:
                 loadCharBuffer('O');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+2][0] = charBuffer[i];
+                    expandByte(i+2, reverse(charBuffer[i]));
                 }
 
                 loadCharBuffer('o');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+15][0] = charBuffer[i];
+                    expandByte(i+15, reverse(charBuffer[i]));
                 }
                 break;
             case 3:
                 loadCharBuffer('>');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+2][0] = charBuffer[i];
+                    expandByte(i+2, reverse(charBuffer[i]));
                 }
 
                 loadCharBuffer('<');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+15][0] = charBuffer[i];
+                    expandByte(i+15, reverse(charBuffer[i]));
                 }
                 break;
             case 4:
                 loadCharBuffer('o');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+2][0] = charBuffer[i];
+                    expandByte(i+2, reverse(charBuffer[i]));
                 }
 
                 loadCharBuffer('O');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+15][0] = charBuffer[i];
+                    expandByte(i+15, reverse(charBuffer[i]));
                 }
                 break;
             case 5:
                 loadCharBuffer('^');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+2][0] = charBuffer[i];
+                    expandByte(i+2, reverse(charBuffer[i]));
                 }
 
                 loadCharBuffer('^');
                 for (int i = 0; i < 8; i++) {
-                    GlassesBits[i+15][0] = charBuffer[i];
+                    expandByte(i+15, reverse(charBuffer[i]));
                 }
                 break;
         }
@@ -408,7 +439,7 @@ void emote() {
 
     emotecounter = (emotecounter + 1) % EMOTE_DELAY;
 
-    writeBitFrame(0, 0);
+    writePWMFrame(0);
 }
 
 int fireAction = 0;
@@ -443,12 +474,18 @@ void fire() {
     }
 }
 
+void loadGraphicsFrame(int frame) {
+    for (int x = 0; x < 24; x++) {
+        expandByte(x, reverse(pgm_read_byte(Graphics[frame]+x)));
+    }
+}
+
 // Awww!
 byte currentHeartFrame = 0;
 byte heartLoopCount = 0;
 void beatingHearts() {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
     }
 
@@ -462,7 +499,7 @@ void beatingHearts() {
         currentHeartFrame++;
         if (currentHeartFrame > 5) currentHeartFrame = 0;
 
-        writeBitFrame(0, 0);
+        writePWMFrame(0);
     }
 }
 
@@ -475,7 +512,7 @@ int eqRandomizerCap = 0;
 #define EQ_MAX_INTERVAL 400
 void fakeEQ() {
     if (!patternInit) {
-        switchDrawType(0, 0);
+        switchDrawType(0, 1);
         patternInit = true;
         eqRandomizerCap = random(0, EQ_MAX_INTERVAL - EQ_MIN_INTERVAL) + EQ_MIN_INTERVAL;
     }
@@ -503,9 +540,9 @@ void fakeEQ() {
     // render the bars if something visible has happened
     if (eqDecay == 0 || eqRandomizerDelay == 0) {
         for (byte i = 0; i < 12; i++) {
-            GlassesBits[i*2][0] = 0xFF << (8 - eqLevels[i]);
-            GlassesBits[i*2+1][0] = 0xFF << (8 - eqLevels[i]);
+            expandByteRev(i*2, 0xFF << (8 - eqLevels[i]));
+            expandByteRev(i*2+1, 0xFF << (8 - eqLevels[i]));
         }
-        writeBitFrame(0, 0);
+        writePWMFrame(0);
     }
 }
