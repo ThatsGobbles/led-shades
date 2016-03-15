@@ -1,5 +1,5 @@
-// CIE1931 correction table
-// Credit: Jared Sanson's Python CIE table generator
+// CIE1931 correction table.
+// Credit: Jared Sanson's Python CIE table generator.
 
 const byte Cie1931LookupTable[256] PROGMEM = {
     0, 0, 0, 0, 0, 1, 1, 1, 1, 1,

@@ -112,13 +112,13 @@ void loop() {
             beatingHearts();
             break;
         case 1:
-            scrollMessage(0, SCROLL1X);
+            scrollMessage(0, SCROLL2X);
             break;
         case 2:
             fire();
             break;
         case 3:
-            scrollMessage(1, SCROLL1X);
+            scrollMessage(1, SCROLL2X);
             break;
         case 4:
             starField();
@@ -136,13 +136,13 @@ void loop() {
             sparkles();
             break;
         case 9:
-            scrollMessage(2, SCROLL1X);
+            scrollMessage(2, SCROLL2X);
             break;
         case 10:
             rain();
             break;
         case 11:
-            Plasma();
+            plasma();
             break;
         case 12:
             rider();
