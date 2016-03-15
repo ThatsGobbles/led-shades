@@ -11,8 +11,8 @@ void readBrightness() {
 // Rough, needs to be streamlined
 void writeBitFrame(byte frame, byte bitbuffer) {
     Wire.beginTransmission(I2C_ADDR_AS1130_R);
-    Wire.write(0xfd);
-    Wire.write(frame + memoryONOFFSTART);
+    Wire.write(REGISTER_SELECT);
+    Wire.write(frame + MEMORY_ON_OFF_START);
     Wire.endTransmission();
 
     byte tempBits = 0;
@@ -27,8 +27,8 @@ void writeBitFrame(byte frame, byte bitbuffer) {
     Wire.endTransmission();
 
     Wire.beginTransmission(I2C_ADDR_AS1130_L);
-    Wire.write(0xfd);
-    Wire.write(frame + memoryONOFFSTART);
+    Wire.write(REGISTER_SELECT);
+    Wire.write(frame + MEMORY_ON_OFF_START);
     Wire.endTransmission();
 
     Wire.beginTransmission(I2C_ADDR_AS1130_L);
@@ -45,8 +45,8 @@ void writeBitFrame(byte frame, byte bitbuffer) {
 // Rough, needs to be streamlined
 void writePWMFrame(byte frame) {
     Wire.beginTransmission(I2C_ADDR_AS1130_R);
-    Wire.write(0xfd);
-    Wire.write(frame + memoryBLINKPWMSTART);
+    Wire.write(REGISTER_SELECT);
+    Wire.write(frame + MEMORY_BLINK_PWM_START);
     Wire.endTransmission();
 
     for (int x = 0; x < 12; x++) {
@@ -59,8 +59,8 @@ void writePWMFrame(byte frame) {
     }
 
     Wire.beginTransmission(I2C_ADDR_AS1130_L);
-    Wire.write(0xfd);
-    Wire.write(frame + memoryBLINKPWMSTART);
+    Wire.write(REGISTER_SELECT);
+    Wire.write(frame + MEMORY_BLINK_PWM_START);
     Wire.endTransmission();
 
     for (int x = 0; x < 12; x++) {
@@ -78,8 +78,8 @@ void writePWMFrame(byte frame) {
 // Mostly used to clear blink frames, since blink is useless
 void writeBlinkFrame(byte frame, byte bitbuffer) {
     Wire.beginTransmission(I2C_ADDR_AS1130_R);
-    Wire.write(0xfd);
-    Wire.write(frame + memoryBLINKPWMSTART);
+    Wire.write(REGISTER_SELECT);
+    Wire.write(frame + MEMORY_BLINK_PWM_START);
     Wire.endTransmission();
 
     Wire.beginTransmission(I2C_ADDR_AS1130_R);
@@ -91,8 +91,8 @@ void writeBlinkFrame(byte frame, byte bitbuffer) {
     Wire.endTransmission();
 
     Wire.beginTransmission(I2C_ADDR_AS1130_L);
-    Wire.write(0xfd);
-    Wire.write(frame + memoryBLINKPWMSTART);
+    Wire.write(REGISTER_SELECT);
+    Wire.write(frame + MEMORY_BLINK_PWM_START);
     Wire.endTransmission();
 
     Wire.beginTransmission(I2C_ADDR_AS1130_L);
