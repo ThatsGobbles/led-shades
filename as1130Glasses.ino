@@ -118,13 +118,13 @@ void loop() {
             fire();
             break;
         case 3:
-            scrollMessage(1, SCROLL2X);
+            emote();
             break;
         case 4:
             starField();
             break;
         case 5:
-            sines();
+            fakeEQ();
             break;
         case 6:
             slantBars();
@@ -145,7 +145,7 @@ void loop() {
             plasma();
             break;
         case 12:
-            rider();
+            fullOn();
             break;
     }
 

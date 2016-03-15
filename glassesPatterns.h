@@ -274,24 +274,27 @@ void sparkles() {
 
 int riderCount = 0;
 int riderPos = 0;
+int tpos = 0;
 void rider() {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
+        riderCount = 0;
+        riderPos = 0;
+        tpos = 0;
     }
 
     fadeAllPWM();
     if (riderCount++ > 5) {
         riderCount = 0;
 
-        int tpos;
         if (riderPos < 8)           tpos = riderPos;
         else if (riderPos < 12)     tpos = -1;
         else if (riderPos < 20)     tpos = 19 - riderPos;
         else if (riderPos <= 40)    tpos = -1;
         else if (riderPos > 40)     riderPos = 0;
 
-        for (int x = tpos*3; x < (tpos*3 + 3); x++) {
+        for (int x = tpos*3; x < (tpos * 3 + 3); x++) {
             for (int y = 0; y < 8; y++) {
                 GlassesPWM[x][y] = pgm_read_byte(&Cie1931LookupTable[255*(tpos != -1)]);
             }
@@ -321,13 +324,16 @@ void displayChar(int character) {
 
 // Draw various emoticon style faces.
 int emotecounter = 0;
+byte currentEmote = 0;
+#define EMOTE_DELAY 100
 void emote() {
-    byte currentEmote = 0;
-    if (emotecounter < 1) {
-        emotecounter = random(200, 5000);
+    if (!patternInit) {
+        switchDrawType(0, 0);
+        patternInit = true;
+        currentEmote = 0;
+    }
 
-        currentEmote = random(0, 6);
-
+    if (emotecounter == 0) {
         switch(currentEmote) {
             case 0:
                 loadCharBuffer('X');
@@ -397,10 +403,12 @@ void emote() {
                 break;
         }
 
+        currentEmote = (currentEmote + 1) % 6;
     }
 
+    emotecounter = (emotecounter + 1) % EMOTE_DELAY;
+
     writeBitFrame(0, 0);
-    emotecounter--;
 }
 
 int fireAction = 0;
