@@ -14,14 +14,14 @@ float plasVector = 0;
 
 void expandByte(byte col, byte value) {
     for (byte i = 0; i < 8; i++) {
-        GlassesPWM[col][i] = value & 0b10000000 ? SOLID : EMPTY;
+        GlassesPWM[col][i][0] = value & 0b10000000 ? SOLID : EMPTY;
         value <<= 1;
     }
 }
 
 void expandByteRev(byte col, byte value) {
     for (byte i = 0; i < 8; i++) {
-        GlassesPWM[col][i] = value & 0b00000001 ? SOLID : EMPTY;
+        GlassesPWM[col][i][0] = value & 0b00000001 ? SOLID : EMPTY;
         value >>= 1;
     }
 }
@@ -34,7 +34,7 @@ void sines() {
         patternInit = true;
     }
 
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < NUM_LED_COLS; i++) {
         expandByte(i, 3 << (int)(sin(i / 2.0 + incRval) * 3.5 + 3.5));
     }
 
@@ -58,11 +58,11 @@ void plasma() {
         patternInit = true;
     }
 
-    for (int x = 0; x < 24; x++) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
         for (int y = 0; y < 8; y++) {
             byte brightness = qsine(sqrt((x-11.5)*(x-11.5) + (y-3.5)*(y-3.5))*60 + plasOffset);
 
-            GlassesPWM[x][y] = pgm_read_byte(&Cie1931LookupTable[brightness]);
+            GlassesPWM[x][y][0] = pgm_read_byte(&Cie1931LookupTable[brightness]);
         }
     }
 
@@ -73,9 +73,9 @@ void plasma() {
 
 #define FADE_INCREMENT 0.9
 void fadeAllPWM() {
-    for (int x = 0; x < 24; x++) {
-        for (int y = 0; y < 8; y++) {
-            GlassesPWM[x][y] *= FADE_INCREMENT;
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
+            GlassesPWM[x][y][0] *= FADE_INCREMENT;
         }
     }
 }
@@ -158,15 +158,7 @@ void sideRain(byte dir) {
     }
 }
 
-byte vRainCols[24] = {0};
-const byte byteReverseLookup[16] = {
-0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
-0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf, };
-
-byte reverse(byte n) {
-   // Reverse the top and bottom nibble then swap them.
-   return (byteReverseLookup[n&0b1111] << 4) | byteReverseLookup[n>>4];
-}
+byte vRainCols[NUM_LED_COLS] = {0};
 
 void rain(boolean up) {
     if (!patternInit) {
@@ -185,7 +177,7 @@ void rain(boolean up) {
         vRainCols[random(0,24)] |= 1;
 
         for (int i = 0; i < 24; i++) {
-            expandByte(i, up ? vRainCols[i] : reverse(vRainCols[i]));
+            up ? expandByte(i, vRainCols[i]) : expandByteRev(i, vRainCols[i]);
         }
 
         writePWMFrame(0);
@@ -229,7 +221,7 @@ void starField() {
             stars[i].yIncr = 0;
         }
         else {
-            GlassesPWM[xPos][yPos] = 255;
+            GlassesPWM[xPos][yPos][0] = 255;
         }
     }
 
@@ -251,14 +243,14 @@ void fullOn() {
     if(blinkAction > BLINK_COUNT/2) {
         for (int x = 0; x < 24; x++) {
             for (int y = 0; y < 8; y++) {
-                GlassesPWM[x][y] = 255;
+                GlassesPWM[x][y][0] = 255;
             }
         }
     }
     else {
         for (int x = 0; x < 24; x++) {
             for (int y = 0; y < 8; y++) {
-                GlassesPWM[x][y] = 0;
+                GlassesPWM[x][y][0] = 0;
             }
         }
     }
@@ -280,7 +272,7 @@ void slantBars() {
 
         for (int x = 0; x < 24; x++) {
             for (int y = 0; y < 8; y++) {
-                GlassesPWM[x][y] = pgm_read_byte(&Cie1931LookupTable[(((x + y + (int)slantPos) % 8) * 32)]);
+                GlassesPWM[x][y][0] = pgm_read_byte(&Cie1931LookupTable[(((x + y + (int)slantPos) % 8) * 32)]);
             }
         }
 
@@ -299,42 +291,42 @@ void sparkles() {
     }
 
     fadeAllPWM();
-    for (int i = 0; i < SPARKLE_COUNT; i++) GlassesPWM[random(0, 24)][random(0, 8)] = 255;
+    for (int i = 0; i < SPARKLE_COUNT; i++) GlassesPWM[random(0, 24)][random(0, 8)][0] = 255;
     writePWMFrame(0);
 }
 
-int riderCount = 0;
-int riderPos = 0;
-int tpos = 0;
-void rider() {
-    if (!patternInit) {
-        switchDrawType(0, 1);
-        patternInit = true;
-        riderCount = 0;
-        riderPos = 0;
-        tpos = 0;
-    }
+// int riderCount = 0;
+// int riderPos = 0;
+// int tpos = 0;
+// void rider() {
+//     if (!patternInit) {
+//         switchDrawType(0, 1);
+//         patternInit = true;
+//         riderCount = 0;
+//         riderPos = 0;
+//         tpos = 0;
+//     }
 
-    fadeAllPWM();
-    if (riderCount++ > 5) {
-        riderCount = 0;
+//     fadeAllPWM();
+//     if (riderCount++ > 5) {
+//         riderCount = 0;
 
-        if (riderPos < 8)           tpos = riderPos;
-        else if (riderPos < 12)     tpos = -1;
-        else if (riderPos < 20)     tpos = 19 - riderPos;
-        else if (riderPos <= 40)    tpos = -1;
-        else if (riderPos > 40)     riderPos = 0;
+//         if (riderPos < 8)           tpos = riderPos;
+//         else if (riderPos < 12)     tpos = -1;
+//         else if (riderPos < 20)     tpos = 19 - riderPos;
+//         else if (riderPos <= 40)    tpos = -1;
+//         else if (riderPos > 40)     riderPos = 0;
 
-        for (int x = tpos*3; x < (tpos * 3 + 3); x++) {
-            for (int y = 0; y < 8; y++) {
-                GlassesPWM[x][y] = pgm_read_byte(&Cie1931LookupTable[255*(tpos != -1)]);
-            }
-        }
+//         for (int x = tpos*3; x < (tpos * 3 + 3); x++) {
+//             for (int y = 0; y < 8; y++) {
+//                 GlassesPWM[x][y][0] = pgm_read_byte(&Cie1931LookupTable[255*(tpos != -1)]);
+//             }
+//         }
 
-        riderPos++;
-        writePWMFrame(0);
-    }
-}
+//         riderPos++;
+//         writePWMFrame(0);
+//     }
+// }
 
 // Simply grab a character from the font and put it in the 8x8 section of both sides of the glasses.
 void displayChar(int character) {
@@ -346,8 +338,8 @@ void displayChar(int character) {
     loadCharBuffer(character);
 
     for (int i = 0; i < 8; i++) {
-        expandByte(i+1, charBuffer[i]);
-        expandByte(i+15, charBuffer[i]);
+        expandByteRev(i+1, charBuffer[i]);
+        expandByteRev(i+15, charBuffer[i]);
     }
 
     writePWMFrame(0);
@@ -369,67 +361,67 @@ void emote() {
             case 0:
                 loadCharBuffer('X');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+2, reverse(charBuffer[i]));
+                    expandByteRev(i+2, charBuffer[i]);
                 }
 
                 loadCharBuffer('X');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+15, reverse(charBuffer[i]));
+                    expandByteRev(i+15, charBuffer[i]);
                 }
                 break;
             case 1:
                 loadCharBuffer('?');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+2, reverse(charBuffer[i]));
+                    expandByteRev(i+2, charBuffer[i]);
                 }
 
                 loadCharBuffer('?');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+15, reverse(charBuffer[i]));
+                    expandByteRev(i+15, charBuffer[i]);
                 }
                 break;
             case 2:
                 loadCharBuffer('O');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+2, reverse(charBuffer[i]));
+                    expandByteRev(i+2, charBuffer[i]);
                 }
 
                 loadCharBuffer('o');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+15, reverse(charBuffer[i]));
+                    expandByteRev(i+15, charBuffer[i]);
                 }
                 break;
             case 3:
                 loadCharBuffer('>');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+2, reverse(charBuffer[i]));
+                    expandByteRev(i+2, charBuffer[i]);
                 }
 
                 loadCharBuffer('<');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+15, reverse(charBuffer[i]));
+                    expandByteRev(i+15, charBuffer[i]);
                 }
                 break;
             case 4:
                 loadCharBuffer('o');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+2, reverse(charBuffer[i]));
+                    expandByteRev(i+2, charBuffer[i]);
                 }
 
                 loadCharBuffer('O');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+15, reverse(charBuffer[i]));
+                    expandByteRev(i+15, charBuffer[i]);
                 }
                 break;
             case 5:
                 loadCharBuffer('^');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+2, reverse(charBuffer[i]));
+                    expandByteRev(i+2, charBuffer[i]);
                 }
 
                 loadCharBuffer('^');
                 for (int i = 0; i < 8; i++) {
-                    expandByte(i+15, reverse(charBuffer[i]));
+                    expandByteRev(i+15, charBuffer[i]);
                 }
                 break;
         }
@@ -445,6 +437,17 @@ void emote() {
 int fireAction = 0;
 int fireRandom = 0;
 byte lineBuffer[24] = {0};
+byte nextFireLine[24] = {0};
+byte fireLookup(byte x, byte y) {
+    y = y % (8 + 1);
+    if (y < 8) {
+        return GlassesPWM[x % 24][y][0];
+    }
+    else if (y == 8) {
+        return lineBuffer[x % 24];
+    }
+}
+
 void fire() {
     if (!patternInit) {
         switchDrawType(0, 1);
@@ -455,18 +458,20 @@ void fire() {
         fireAction = 0;
         int x;
 
-        // NOTE: Removed some commented out code, see original if needed.
         for (x = 0; x < 24; x++) {
-            GlassesPWM[x][8] = (random(0,4) == 1) * 255;
+            lineBuffer[x] = (random(0,4) == 1) * 255;
         }
 
-        for (int y = 1; y < 9 ; y++) {
-            for (x = 0; x < 24; x++) lineBuffer[x] = GlassesPWM[x][y];
+        for (int y = 0; y < 8 ; y++) {
             for (x = 0; x < 24; x++) {
-                int tempBright = (lineBuffer[(x-1) % 24] + lineBuffer[(x+1) % 24] + lineBuffer[x] + GlassesPWM[x][(y+1) % 9])/3.7-10;
+                int tempBright = fireLookup(x - 1, y + 1)
+                               + fireLookup(x + 1, y + 1)
+                               + fireLookup(x, y + 1)
+                               + fireLookup(x, y + 2);
+                tempBright = tempBright / 3.7 - 10;
                 if (tempBright < 0) tempBright = 0;
                 if (tempBright > 255) tempBright = 255;
-                GlassesPWM[x][y-1] = tempBright;
+                GlassesPWM[x][y][0] = tempBright;
             }
         }
 
@@ -476,7 +481,7 @@ void fire() {
 
 void loadGraphicsFrame(int frame) {
     for (int x = 0; x < 24; x++) {
-        expandByte(x, reverse(pgm_read_byte(Graphics[frame]+x)));
+        expandByteRev(x, pgm_read_byte(Graphics[frame]+x));
     }
 }
 
@@ -545,4 +550,53 @@ void fakeEQ() {
         }
         writePWMFrame(0);
     }
+}
+
+#define PI 3.14159
+// Adapted from http://gizma.com/easing/
+float easeInOutQuad(float t, float start, float change, float duration) {
+    t /= duration/2;
+    if (t < 1) return change/2*t*t + start;
+    t--;
+    return -change/2 * (t*(t-2) - 1) + start;
+}
+float easeInOutSine(float t, float start, float change, float duration) {
+    return -change/2 * (cos(PI*t/duration) - 1) + start;
+}
+
+// Setting this too low will cause skips in the current version of rider.
+#define EASING_DURATION 48
+#define EASING_SLEEP 32
+int tRider;
+int sleepCooldown;
+int dirRider;
+float pRider;
+void rider() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        tRider = 0;
+        dirRider = 1;
+        sleepCooldown = 0;
+    }
+
+    pRider = easeInOutSine(tRider, 0, (NUM_LED_COLS - 0.1), EASING_DURATION);
+
+    fadeAllPWM();
+    expandByte((byte)pRider, 0b11111111);
+    writePWMFrame(0);
+
+    if (tRider >= EASING_DURATION && dirRider > 0) {
+        tRider = EASING_DURATION;
+        dirRider = -1;
+        sleepCooldown = EASING_SLEEP;
+    }
+    else if (tRider <= 0 && dirRider < 0) {
+        tRider = 0;
+        dirRider = 1;
+        sleepCooldown = EASING_SLEEP;
+    }
+
+    if (sleepCooldown > 0) sleepCooldown--;
+    else tRider += dirRider;
 }

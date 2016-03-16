@@ -53,7 +53,7 @@ void writePWMFrame(byte frame) {
         Wire.beginTransmission(I2C_ADDR_AS1130_R);
         Wire.write(26+x*11);
         for (int y = 0; y < 8; y++) {
-            Wire.write(GlassesPWM[x][y]);
+            Wire.write(GlassesPWM[x][y][0]);
         }
         Wire.endTransmission();
     }
@@ -67,7 +67,7 @@ void writePWMFrame(byte frame) {
         Wire.beginTransmission(I2C_ADDR_AS1130_L);
         Wire.write(26+x*11);
         for (int y = 0; y < 8; y++) {
-            Wire.write(GlassesPWM[x+12][y]);
+            Wire.write(GlassesPWM[x+12][y][0]);
         }
         Wire.endTransmission();
     }
@@ -110,7 +110,7 @@ void writeBlinkFrame(byte frame, byte bitbuffer) {
 void fillPWMFrame(byte frame, byte value) {
     for (int x = 0; x < 24; x++) {
         for (int y = 0; y < 8; y++) {
-            GlassesPWM[x][y] = value;
+            GlassesPWM[x][y][0] = value;
         }
     }
 }
@@ -238,14 +238,14 @@ void scrollPWM(byte dir) {
     if (dir == 0) {
         for (int i = 1; i < 24; i++) {
             for (int j = 0; j < 8; j++) {
-                GlassesPWM[24 - i][j] = GlassesPWM[24-i-1][j];
+                GlassesPWM[24 - i][j][0] = GlassesPWM[24-i-1][j][0];
             }
         }
     }
     else if (dir == 1) {
         for (int i = 1; i < 24; i++) {
             for (int j = 0; j < 8; j++) {
-                GlassesPWM[i-1][j] = GlassesPWM[i][j];
+                GlassesPWM[i-1][j][0] = GlassesPWM[i][j][0];
             }
         }
     }
@@ -402,7 +402,7 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
     }
 
     // first pixel
-    GlassesPWM[X0][Y0] = 255;
+    GlassesPWM[X0][Y0][0] = 255;
 
     if ((DeltaX = X1 - X0) >= 0) {
         XDir = 1;
@@ -416,7 +416,7 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
         // horizontal line
         while (DeltaX-- != 0) {
         X0 += XDir;
-        GlassesPWM[X0][Y0] = 255;
+        GlassesPWM[X0][Y0][0] = 255;
         }
         return;
     }
@@ -425,7 +425,7 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
         // vertical line
         do {
             Y0++;
-            GlassesPWM[X0][Y0] = 255;
+            GlassesPWM[X0][Y0][0] = 255;
         }
         while (--DeltaY != 0);
         return;
@@ -436,7 +436,7 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
         do {
         X0 += XDir;
         Y0++;
-        GlassesPWM[X0][Y0] = 255;
+        GlassesPWM[X0][Y0][0] = 255;
         }
         while (--DeltaY != 0);
         return;
@@ -458,10 +458,10 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
             }
             Y0++;
             Weighting = ErrorAcc >> IntensityShift;
-            GlassesPWM[X0][Y0] = getCIE(255 - Weighting);
-            GlassesPWM[X0][Y0 + 1] = getCIE(255 - (Weighting ^ WeightingComplementMask));
+            GlassesPWM[X0][Y0][0] = getCIE(255 - Weighting);
+            GlassesPWM[X0][Y0 + 1][0] = getCIE(255 - (Weighting ^ WeightingComplementMask));
         }
-        GlassesPWM[X1][Y1] = 255;
+        GlassesPWM[X1][Y1][0] = 255;
         return;
     }
 
@@ -474,8 +474,8 @@ void wuLine(int X0, int Y0, int X1, int Y1) {
         }
         X0 += XDir;
         Weighting = ErrorAcc >> IntensityShift;
-        GlassesPWM[X0][Y0] = getCIE(255 - Weighting);
-        GlassesPWM[X0][Y0 + 1] = getCIE(255 - (Weighting ^ WeightingComplementMask));
+        GlassesPWM[X0][Y0][0] = getCIE(255 - Weighting);
+        GlassesPWM[X0][Y0 + 1][0] = getCIE(255 - (Weighting ^ WeightingComplementMask));
     }
-    GlassesPWM[X1][Y1] = 255;
+    GlassesPWM[X1][Y1][0] = 255;
 }

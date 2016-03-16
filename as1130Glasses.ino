@@ -17,6 +17,11 @@
 
 #define G_VERSION                           1
 
+// Dimensions of PWM buffers.
+#define NUM_LED_COLS                        24
+#define NUM_LED_ROWS                        8
+#define NUM_LED_BUFS                        2
+
 // Auto-cycle delay per pattern (in ms).
 #define AUTO_CYCLE_DELAY_MS                 15000
 
@@ -26,7 +31,7 @@
 byte GlassesBits[24][2]                     = {{0}};
 
 // PWM buffer, 24 column x 8 row byte array (PWM frame).
-byte GlassesPWM[24][9]                      = {};
+byte GlassesPWM[NUM_LED_COLS][NUM_LED_ROWS][NUM_LED_BUFS]                   = {};
 
 // Pattern initialization flag.
 boolean patternInit                         = false;
@@ -109,7 +114,7 @@ void loop() {
 
     switch(currentPattern) {
         case 0:
-            beatingHearts();
+            rider();
             break;
         case 1:
             sines();
@@ -145,7 +150,7 @@ void loop() {
             plasma();
             break;
         case 12:
-            fullOn();
+            beatingHearts();
             break;
     }
 
