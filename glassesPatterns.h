@@ -71,13 +71,27 @@ void plasma() {
     if (plasOffset > 359) plasOffset -= 359;
 }
 
-#define FADE_INCREMENT 0.9
-void fadeAllPWM() {
+void fadeAllPWM(float f) {
     for (int x = 0; x < NUM_LED_COLS; x++) {
         for (int y = 0; y < NUM_LED_ROWS; y++) {
-            GlassesPWM[x][y][0] *= FADE_INCREMENT;
+            GlassesPWM[x][y][0] *= f;
         }
     }
+}
+
+#define FADE_INCREMENT_SLOW 0.9
+#define FADE_INCREMENT_MED 0.8
+#define FADE_INCREMENT_FAST 0.7
+void fadeAllPWMSlow() {
+    fadeAllPWM(FADE_INCREMENT_SLOW);
+}
+
+void fadeAllPWMMed() {
+    fadeAllPWM(FADE_INCREMENT_MED);
+}
+
+void fadeAllPWMFast() {
+    fadeAllPWM(FADE_INCREMENT_FAST);
 }
 
 // Initialize / load message string
@@ -192,6 +206,8 @@ typedef struct Stars {
 };
 
 #define NUM_STARS 10
+#define STAR_MIN_X_INCR 0.02
+#define STAR_MIN_Y_INCR 0.02
 
 Stars stars[NUM_STARS];
 
@@ -201,11 +217,11 @@ void starField() {
         patternInit = true;
     }
 
-    fadeAllPWM();
+    fadeAllPWMSlow();
     for (int i = 0; i < NUM_STARS; i++) {
-        if (abs(stars[i].xIncr) < 0.02 || abs(stars[i].yIncr) < 0.02) {
-            stars[i].xPos = 11.5;
-            stars[i].yPos = 3.5;
+        if (abs(stars[i].xIncr) < STAR_MIN_X_INCR || abs(stars[i].yIncr) < STAR_MIN_Y_INCR) {
+            stars[i].xPos = (NUM_LED_COLS - 1) / 2.0;
+            stars[i].yPos = (NUM_LED_ROWS - 1) / 2.0;
             stars[i].xIncr = random(0,200)/100.0 - 1.0;
             stars[i].yIncr = random(0,200)/200.0 - 0.5;
         }
@@ -216,7 +232,7 @@ void starField() {
         int xPos = (int)stars[i].xPos;
         int yPos = (int)stars[i].yPos;
 
-        if (xPos < 0 || xPos > 23 || yPos < 0 || yPos > 7) {
+        if (xPos < 0 || xPos >= NUM_LED_COLS || yPos < 0 || yPos >= NUM_LED_ROWS) {
             stars[i].xIncr = 0;
             stars[i].yIncr = 0;
         }
@@ -290,7 +306,7 @@ void sparkles() {
         patternInit = true;
     }
 
-    fadeAllPWM();
+    fadeAllPWMSlow();
     for (int i = 0; i < SPARKLE_COUNT; i++) GlassesPWM[random(0, 24)][random(0, 8)][0] = 255;
     writePWMFrame(0);
 }
@@ -307,7 +323,7 @@ void sparkles() {
 //         tpos = 0;
 //     }
 
-//     fadeAllPWM();
+//     fadeAllPWMSlow();
 //     if (riderCount++ > 5) {
 //         riderCount = 0;
 
@@ -454,7 +470,7 @@ void fire() {
         patternInit = true;
     }
 
-    if (fireAction++ > 2) {
+    if (fireAction++ > 4) {
         fireAction = 0;
         int x;
 
@@ -582,7 +598,7 @@ void rider() {
 
     pRider = easeInOutSine(tRider, 0, (NUM_LED_COLS - 0.1), EASING_DURATION);
 
-    fadeAllPWM();
+    fadeAllPWMSlow();
     expandByte((byte)pRider, 0b11111111);
     writePWMFrame(0);
 
@@ -599,4 +615,123 @@ void rider() {
 
     if (sleepCooldown > 0) sleepCooldown--;
     else tRider += dirRider;
+}
+
+void smartPlot(int x, int y, byte val) {
+    if (x < 0 || x >= NUM_LED_COLS) return;
+    if (y < 0 || y >= NUM_LED_ROWS) return;
+    GlassesPWM[x][y][0] = val;
+}
+
+void plot_4_points(int cx, int cy, int dx, int dy, float f) {
+    byte opac = (byte)min(max(255 * f, 0), 255);
+    if (opac == 0) return;
+
+    smartPlot(cx + dx, cy + dy, opac);
+    smartPlot(cx - dx, cy + dy, opac);
+    smartPlot(cx + dx, cy - dy, opac);
+    smartPlot(cx - dx, cy - dy, opac);
+}
+
+void wuEllipse(float cx, float cy, float w, float h) {
+    int xi, yi; // Integer iterators
+    float xj, yj; // Real-value x and y
+    float frc;
+    int flr;
+
+    if (w <= 0 || h <= 0) return;
+
+    float a = w / 2.0;
+    float b = h / 2.0;
+    float asq = a * a;
+    float bsq = b * b;
+
+    int ffd;
+
+    ffd = (int)round(asq / sqrt(bsq + asq));
+    for (int xi = 0; xi <= ffd; xi++) {
+        yj = b * sqrt(1 - xi * xi / asq);
+        flr = (int)yj;
+        frc = yj = flr;
+        plot_4_points(cx, cy, xi, flr,     1 - frc);
+        plot_4_points(cx, cy, xi, flr + 1, frc);
+    }
+
+    ffd = (int)round(bsq / sqrt(bsq + asq));
+    for (int yi = 0; yi <= ffd; yi++) {
+        xj = a * sqrt(1 - yi * yi / bsq);
+        flr = (int)xj;
+        frc = xj = flr;
+        plot_4_points(cx, cy, flr,     yi, 1 - frc);
+        plot_4_points(cx, cy, flr + 1, yi, frc);
+    }
+}
+
+#define MAX_NUM_RIPPLES 4
+#define RIPPLE_FRAME_DELAY 0
+typedef struct Ripple {
+    byte xPos;
+    byte yPos;
+    byte maxSize;
+    float currSize;
+    float sizeInc;
+    int currDelay;
+};
+
+Ripple ripples[MAX_NUM_RIPPLES];
+byte currentRippleDelay;
+
+void ripple() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        currentRippleDelay = RIPPLE_FRAME_DELAY;
+    }
+
+    if (currentRippleDelay > 0) currentRippleDelay--;
+    else {
+        fadeAllPWMMed();
+        for (int i = 0; i < MAX_NUM_RIPPLES; i++) {
+            if (ripples[i].maxSize < 4) {
+                ripples[i].xPos = random(0, NUM_LED_COLS);
+                ripples[i].yPos = random(0, NUM_LED_ROWS);
+                ripples[i].maxSize = random(4, 10);
+                ripples[i].currSize = 0.0;
+                ripples[i].sizeInc = ripples[i].maxSize / (random(20, 30) * 1.0);
+                ripples[i].currDelay = RIPPLE_FRAME_DELAY;
+            }
+
+            if (ripples[i].currSize > ripples[i].maxSize) {
+                ripples[i].maxSize = 0;
+            }
+            else {
+                wuEllipse(ripples[i].xPos, ripples[i].yPos, ripples[i].currSize, ripples[i].currSize);
+            }
+
+            ripples[i].currSize += ripples[i].sizeInc;
+        }
+
+        writePWMFrame(0);
+        currentRippleDelay = RIPPLE_FRAME_DELAY;
+    }
+}
+
+#define MAX_NUM_FIREWORKS 3
+#define MIN_FIREWORKS_HEIGHT 2
+#define MAX_FIREWORKS_HEIGHT 7
+
+typedef struct Firework {
+    byte cHeight;
+    byte tHeight;
+};
+
+void fireworks() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+    }
+}
+
+void animeShades() {
+
 }

@@ -110,7 +110,7 @@ void writeBlinkFrame(byte frame, byte bitbuffer) {
 void fillPWMFrame(byte frame, byte value) {
     for (int x = 0; x < 24; x++) {
         for (int y = 0; y < 8; y++) {
-            GlassesPWM[x][y][0] = value;
+            GlassesPWM[x][y][frame] = value;
         }
     }
 }

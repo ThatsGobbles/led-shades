@@ -117,7 +117,7 @@ void loop() {
             rider();
             break;
         case 1:
-            sines();
+            ripple();
             break;
         case 2:
             fire();
