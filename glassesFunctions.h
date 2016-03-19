@@ -1,5 +1,8 @@
 // Glasses-specific functions, may not work with other applications
 
+#define SOLID_PIXEL 255
+#define EMPTY_PIXEL 0
+
 // Read and smooth light sensor input
 #define BRIGHTNESS_SMOOTH_FACTOR 0.99
 float smoothedBrightness = 0;
@@ -108,8 +111,8 @@ void writeBlinkFrame(byte frame, byte bitbuffer) {
 // Usually used to clear or fill frame
 // Bit and PWM frames interact, if you want to do bit graphics you must fill PWM frame
 void fillPWMFrame(byte frame, byte value) {
-    for (int x = 0; x < 24; x++) {
-        for (int y = 0; y < 8; y++) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
             GlassesPWM[x][y][frame] = value;
         }
     }
@@ -133,6 +136,14 @@ void fillBlinkFrame(byte frame, byte value) {
         GlassesBits[x][1] = 255*(value > 0);
     }
     writeBlinkFrame(frame, 0);
+}
+
+void invertPWMFrame(byte frame) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
+            GlassesPWM[x][y][frame] = 255 - GlassesPWM[x][y][frame];
+        }
+    }
 }
 
 // Configure AS1130 chips to ideal startup settings
@@ -234,33 +245,58 @@ void switchDrawType(byte frame, byte enablePWM) {
 
 // Copy contents of PWM array one LED over
 // Possible to do in hardware at some future date
-void scrollPWM(byte dir) {
-    if (dir == 0) {
-        for (int i = 1; i < 24; i++) {
-            for (int j = 0; j < 8; j++) {
-                GlassesPWM[24 - i][j][0] = GlassesPWM[24-i-1][j][0];
-            }
-        }
-    }
-    else if (dir == 1) {
-        for (int i = 1; i < 24; i++) {
-            for (int j = 0; j < 8; j++) {
-                GlassesPWM[i-1][j][0] = GlassesPWM[i][j][0];
-            }
+// TODO: Add a "new" value, either a byte to fill, or a row/column buffer.
+void hScrollPWM(bool increasing) {
+    int i, j;
+    for (i = 1; i < NUM_LED_COLS; i++) {
+        for (j = 0; j < NUM_LED_ROWS; j++) {
+            // Shift index i-1 into i.
+            if (increasing) GlassesPWM[NUM_LED_COLS - i][j][0] = GlassesPWM[NUM_LED_COLS - i - 1][j][0];
+            // Shift index i+1 into i.
+            else GlassesPWM[i - 1][j][0] = GlassesPWM[i][j][0];
         }
     }
 }
+
+// // TODO: Add a "new row" value, either a byte to fill, or a row buffer.
+// void vScrollPWM(bool increasing) {
+//     int i, j;
+//     for (i = 1; i < NUM_LED_COLS; i++) {
+//         for (j = 0; j < NUM_LED_ROWS; j++) {
+//             // Shift index i-1 into i.
+//             if (increasing) GlassesPWM[NUM_LED_COLS - i][j][0] = GlassesPWM[NUM_LED_COLS - i - 1][j][0];
+//             // Shift index i+1 into i.
+//             else GlassesPWM[i - 1][j][0] = GlassesPWM[i][j][0];
+//         }
+//     }
+
+
+//     if (increasing) {
+//         for (int i = 1; i < NUM_LED_COLS; i++) {
+//             for (int j = 0; j < NUM_LED_ROWS; j++) {
+//                 GlassesPWM[NUM_LED_COLS - i][j][0] = GlassesPWM[NUM_LED_COLS-i-1][j][0];
+//             }
+//         }
+//     }
+//     else if (dir == 1) {
+//         for (int i = 1; i < NUM_LED_COLS; i++) {
+//             for (int j = 0; j < NUM_LED_ROWS; j++) {
+//                 GlassesPWM[i-1][j][0] = GlassesPWM[i][j][0];
+//             }
+//         }
+//     }
+// }
 
 // Copy contents of bit array one LED over
 // Possible to do in hardware at some future date
 void scrollBits(byte dir, byte bitbuffer) {
     if (dir == 0) {
-        for (int i = 1; i < 24; i++) {
-            GlassesBits[24 - i][bitbuffer] = GlassesBits[24-i-1][bitbuffer];
+        for (int i = 1; i < NUM_LED_COLS; i++) {
+            GlassesBits[NUM_LED_COLS - i][bitbuffer] = GlassesBits[NUM_LED_COLS-i-1][bitbuffer];
         }
     }
     else if (dir == 1) {
-        for (int i = 1; i < 24; i++) {
+        for (int i = 1; i < NUM_LED_COLS; i++) {
             GlassesBits[i-1][bitbuffer] = GlassesBits[i][bitbuffer];
         }
     }
@@ -388,9 +424,118 @@ byte qsine(int angle) {
     else return pgm_read_byte(&QsineLookupTable[359-cangle]);
 }
 
+void smartPlot(int x, int y, byte val) {
+    if (x < 0 || x >= NUM_LED_COLS) return;
+    if (y < 0 || y >= NUM_LED_ROWS) return;
+    GlassesPWM[x][y][0] = val;
+}
+
+// brightness := [0.0, 1.0]
+void smartPlotf(int x, int y, float brightness) {
+    smartPlot(x, y, (byte)round(SOLID_PIXEL * brightness));
+}
+
+// integer part of x
+int ipart(float x) {
+    return (int)x;
+}
+
+// fractional part of x
+float fpart(float x) {
+    if (x < 0) return 1 - (x - floor(x));
+    return x - floor(x);
+}
+
+float rfpart(float x) {
+    return 1 - fpart(x);
+}
+
+void wuLine(float x0, float y0, float x1, float y1) {
+    bool steep = abs(y1 - y0) > abs(x1 - x0);
+
+    float t;
+    if (steep) {
+        t = x0;
+        x0 = y0;
+        y0 = t;
+        t = x1;
+        x1 = y1;
+        y1 = t;
+        // swap(x0, y0);
+        // swap(x1, y1);
+    }
+
+    if (x0 > x1) {
+        t = x0;
+        x0 = x1;
+        x1 = t;
+        t = y0;
+        y0 = y1;
+        y1 = t;
+        // swap(x0, x1);
+        // swap(y0, y1);
+    }
+    
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float gradient = dy / dx;
+    
+    float xend;
+    float yend;
+    float xgap;
+    int xpxl1, ypxl1;
+    int xpxl2, ypxl2;
+
+    // handle first endpoint
+    xend = round(x0);
+    yend = y0 + gradient * (xend - x0);
+    xgap = rfpart(x0 + 0.5);
+    xpxl1 = (int)xend; // this will be used in the main loop
+    ypxl1 = (int)ipart(yend);
+    
+    if (steep) {
+        smartPlotf(ypxl1,   xpxl1, rfpart(yend) * xgap);
+        smartPlotf(ypxl1+1, xpxl1,  fpart(yend) * xgap);
+    }
+    else {
+        smartPlotf(xpxl1, ypxl1  , rfpart(yend) * xgap);
+        smartPlotf(xpxl1, ypxl1+1,  fpart(yend) * xgap);
+    }
+
+    float intery = yend + gradient; // first y-intersection for the main loop
+    
+    // handle second endpoint
+    xend = round(x1);
+    yend = y1 + gradient * (xend - x1);
+    xgap = fpart(x1 + 0.5);
+    xpxl2 = xend; //this will be used in the main loop
+    ypxl2 = ipart(yend);
+    if (steep) {
+        smartPlotf(ypxl2  , xpxl2, rfpart(yend) * xgap);
+        smartPlotf(ypxl2+1, xpxl2,  fpart(yend) * xgap);
+    }
+    else {
+        smartPlotf(xpxl2, ypxl2,  rfpart(yend) * xgap);
+        smartPlotf(xpxl2, ypxl2+1, fpart(yend) * xgap);
+    }
+    
+    // main loop
+    for (int x = xpxl1 + 1; x <= xpxl2 - 1; x++) {
+        if (steep) {
+            smartPlotf(ipart(intery)  , x, rfpart(intery));
+            smartPlotf(ipart(intery)+1, x,  fpart(intery));
+        }
+        else {
+            smartPlotf(x, ipart(intery),  rfpart(intery));
+            smartPlotf(x, ipart(intery)+1, fpart(intery));
+        }
+        intery = intery + gradient;
+    }
+}
+
 // Anti-aliased line algorithm
 // Adapted from Michael Abrash http://www.phatcode.net/res/224/files/html/ch42/42-02.html
-void wuLine(int X0, int Y0, int X1, int Y1) {
+void wuLineOld(int X0, int Y0, int X1, int Y1) {
     uint16_t IntensityShift, ErrorAdj, ErrorAcc;
     uint16_t ErrorAccTemp, Weighting, WeightingComplementMask;
     int DeltaX, DeltaY, Temp, XDir;

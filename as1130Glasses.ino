@@ -114,7 +114,7 @@ void loop() {
 
     switch(currentPattern) {
         case 0:
-            rider();
+            animeShades();
             break;
         case 1:
             ripple();

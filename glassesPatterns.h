@@ -9,19 +9,16 @@ float offset  = 0;
 float plasIncr = -1;
 float plasVector = 0;
 
-#define SOLID 255
-#define EMPTY 0
-
 void expandByte(byte col, byte value) {
     for (byte i = 0; i < 8; i++) {
-        GlassesPWM[col][i][0] = value & 0b10000000 ? SOLID : EMPTY;
+        GlassesPWM[col][i][0] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
         value <<= 1;
     }
 }
 
 void expandByteRev(byte col, byte value) {
     for (byte i = 0; i < 8; i++) {
-        GlassesPWM[col][i][0] = value & 0b00000001 ? SOLID : EMPTY;
+        GlassesPWM[col][i][0] = value & 0b00000001 ? SOLID_PIXEL : EMPTY_PIXEL;
         value >>= 1;
     }
 }
@@ -46,7 +43,7 @@ void sines() {
 
     if (incr > 0.5) incDir = 0;
     if (incr < 0.1) incDir = 1;
-  
+
     delay(5);
 }
 
@@ -59,7 +56,7 @@ void plasma() {
     }
 
     for (int x = 0; x < NUM_LED_COLS; x++) {
-        for (int y = 0; y < 8; y++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
             byte brightness = qsine(sqrt((x-11.5)*(x-11.5) + (y-3.5)*(y-3.5))*60 + plasOffset);
 
             GlassesPWM[x][y][0] = pgm_read_byte(&Cie1931LookupTable[brightness]);
@@ -160,11 +157,11 @@ void sideRain(byte dir) {
         tempRain = (1 << random(0,8)) | (1 << random(0,8));
 
         if (dir == 0) {
-            scrollPWM(0);
+            hScrollPWM(true);
             expandByte(0, tempRain);
         }
         else {
-            scrollPWM(1);
+            hScrollPWM(false);
             expandByte(23, tempRain);
         }
 
@@ -452,15 +449,16 @@ void emote() {
 
 int fireAction = 0;
 int fireRandom = 0;
-byte lineBuffer[24] = {0};
-byte nextFireLine[24] = {0};
+byte lineBuffer[NUM_LED_COLS] = {0};
+byte nextFireLine[NUM_LED_COLS] = {0};
+#define MAX_FIRE_ACTION 4
 byte fireLookup(byte x, byte y) {
-    y = y % (8 + 1);
-    if (y < 8) {
-        return GlassesPWM[x % 24][y][0];
+    y = y % (NUM_LED_ROWS + 1);
+    if (y < NUM_LED_ROWS) {
+        return GlassesPWM[x % NUM_LED_COLS][y][0];
     }
-    else if (y == 8) {
-        return lineBuffer[x % 24];
+    else if (y == NUM_LED_ROWS) {
+        return lineBuffer[x % NUM_LED_COLS];
     }
 }
 
@@ -470,23 +468,23 @@ void fire() {
         patternInit = true;
     }
 
-    if (fireAction++ > 4) {
+    if (fireAction++ > MAX_FIRE_ACTION) {
         fireAction = 0;
         int x;
 
-        for (x = 0; x < 24; x++) {
-            lineBuffer[x] = (random(0,4) == 1) * 255;
+        for (x = 0; x < NUM_LED_COLS; x++) {
+            lineBuffer[x] = (random(0, 4) == 1) * SOLID_PIXEL;
         }
 
         for (int y = 0; y < 8 ; y++) {
-            for (x = 0; x < 24; x++) {
+            for (x = 0; x < NUM_LED_COLS; x++) {
                 int tempBright = fireLookup(x - 1, y + 1)
                                + fireLookup(x + 1, y + 1)
-                               + fireLookup(x, y + 1)
-                               + fireLookup(x, y + 2);
+                               + fireLookup(    x, y + 1)
+                               + fireLookup(    x, y + 2);
                 tempBright = tempBright / 3.7 - 10;
-                if (tempBright < 0) tempBright = 0;
-                if (tempBright > 255) tempBright = 255;
+                if (tempBright < EMPTY_PIXEL) tempBright = EMPTY_PIXEL;
+                if (tempBright > SOLID_PIXEL) tempBright = SOLID_PIXEL;
                 GlassesPWM[x][y][0] = tempBright;
             }
         }
@@ -496,8 +494,8 @@ void fire() {
 }
 
 void loadGraphicsFrame(int frame) {
-    for (int x = 0; x < 24; x++) {
-        expandByteRev(x, pgm_read_byte(Graphics[frame]+x));
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        expandByteRev(x, pgm_read_byte(BeatingHeartFrames[frame]+x));
     }
 }
 
@@ -617,20 +615,11 @@ void rider() {
     else tRider += dirRider;
 }
 
-void smartPlot(int x, int y, byte val) {
-    if (x < 0 || x >= NUM_LED_COLS) return;
-    if (y < 0 || y >= NUM_LED_ROWS) return;
-    GlassesPWM[x][y][0] = val;
-}
-
-void plot_4_points(int cx, int cy, int dx, int dy, float f) {
-    byte opac = (byte)min(max(255 * f, 0), 255);
-    if (opac == 0) return;
-
-    smartPlot(cx + dx, cy + dy, opac);
-    smartPlot(cx - dx, cy + dy, opac);
-    smartPlot(cx + dx, cy - dy, opac);
-    smartPlot(cx - dx, cy - dy, opac);
+void plotFour(int cx, int cy, int dx, int dy, float f) {
+    smartPlotf(cx + dx, cy + dy, f);
+    smartPlotf(cx - dx, cy + dy, f);
+    smartPlotf(cx + dx, cy - dy, f);
+    smartPlotf(cx - dx, cy - dy, f);
 }
 
 void wuEllipse(float cx, float cy, float w, float h) {
@@ -653,8 +642,8 @@ void wuEllipse(float cx, float cy, float w, float h) {
         yj = b * sqrt(1 - xi * xi / asq);
         flr = (int)yj;
         frc = yj = flr;
-        plot_4_points(cx, cy, xi, flr,     1 - frc);
-        plot_4_points(cx, cy, xi, flr + 1, frc);
+        plotFour(cx, cy, xi, flr,     1 - frc);
+        plotFour(cx, cy, xi, flr + 1, frc);
     }
 
     ffd = (int)round(bsq / sqrt(bsq + asq));
@@ -662,8 +651,8 @@ void wuEllipse(float cx, float cy, float w, float h) {
         xj = a * sqrt(1 - yi * yi / bsq);
         flr = (int)xj;
         frc = xj = flr;
-        plot_4_points(cx, cy, flr,     yi, 1 - frc);
-        plot_4_points(cx, cy, flr + 1, yi, frc);
+        plotFour(cx, cy, flr,     yi, 1 - frc);
+        plotFour(cx, cy, flr + 1, yi, frc);
     }
 }
 
@@ -722,7 +711,6 @@ void ripple() {
 
 typedef struct Firework {
     byte cHeight;
-    byte tHeight;
 };
 
 void fireworks() {
@@ -732,6 +720,116 @@ void fireworks() {
     }
 }
 
-void animeShades() {
+enum AnimeShadeStates {
+    BEFORE_FLASH_DELAY,
+    GENERATE_FLASH,
+    RIDE_FLASH,
+    AFTER_FLASH_DELAY,
+    GRADIENT_FILL,
+    SPARKLE,
+};
 
+#define FLASH_WIDTH 5
+#define BEFORE_FLASH_DELAY_AMOUNT 0
+#define AFTER_FLASH_DELAY_AMOUNT 1000
+#define ANIME_GRADIENT_STEPS 5
+AnimeShadeStates state;
+int flashStep;
+byte flashByte;
+byte animeScrollCountdown;
+void animeShades() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        state = BEFORE_FLASH_DELAY;
+    }
+
+    if (state == BEFORE_FLASH_DELAY) {
+        delay(BEFORE_FLASH_DELAY_AMOUNT);
+        state = GENERATE_FLASH;
+        flashStep = 1;
+    }
+    else if (state == GENERATE_FLASH) {
+        flashByte = (~(255 << min(flashStep, FLASH_WIDTH))) << max(0, flashStep - FLASH_WIDTH);
+        if (flashByte != 0) {
+            hScrollPWM(true);
+            expandByteRev(0, flashByte);
+            writePWMFrame(0);
+            flashStep++;
+        }
+        else {
+            state = RIDE_FLASH;
+            animeScrollCountdown = NUM_LED_COLS;
+        }
+    }
+    else if (state == RIDE_FLASH) {
+        // We should just need to scroll the pixels NUM_LED_COLS times.
+        if (animeScrollCountdown > 0) {
+            hScrollPWM(true);
+            expandByte(0, 0);
+            writePWMFrame(0);
+            animeScrollCountdown--;
+        }
+        else {
+            state = AFTER_FLASH_DELAY;
+        }
+    }
+    else if (state == AFTER_FLASH_DELAY) {
+        // At this point, all LEDs should be off.
+        delay(AFTER_FLASH_DELAY_AMOUNT);
+        state = GRADIENT_FILL;
+    }
+    else if (state == GRADIENT_FILL) {
+        // At this point, all LEDs should *still* be off.
+        state = SPARKLE;
+    }
+    else if (state == SPARKLE) {
+        // Clear display.
+        fillPWMFrame(0, 0);
+        state = BEFORE_FLASH_DELAY;
+    }
 }
+
+// #define LINE_WALK_DISTANCE 8
+// float wlTXPos;
+// float wlBXPos;
+// bool wlUseTop;
+// byte wlCountdown;
+// void walkingLines() {
+//     if (!patternInit) {
+//         switchDrawType(0, 1);
+//         patternInit = true;
+//         wlTXPos = -LINE_WALK_DISTANCE / 2 + 0.5;
+//         wlBXPos = 0.5;
+//         wlUseTop = true;
+//         wlCountdown = LINE_WALK_DISTANCE;
+//     }
+
+//     if (wlCountdown > 0) {
+//         fadeAllPWMSlow();
+//         wuLine(wlTXPos, 0, wlBXPos, NUM_LED_ROWS - 1);
+//         if (wlUseTop) wlTXPos++;
+//         else wlBXPos++;
+//         wlCountdown--;
+//     }
+//     else {
+//         wlUseTop = !wlUseTop;
+//         wlCountdown = LINE_WALK_DISTANCE;
+//         if (wlTXPos >= NUM_LED_COLS && wlBXPos >= NUM_LED_COLS) {
+//             wlTXPos = -LINE_WALK_DISTANCE / 2 + 0.5;
+//             wlBXPos = 0.5;
+//             wlUseTop = true;
+//         }
+//     }
+
+//     writePWMFrame(0);
+// }
+
+// void lineTest() {
+//     if (!patternInit) {
+//         switchDrawType(0, 1);
+//         patternInit = true;
+//         wuLine(20, 1, 1, 4);
+//         writePWMFrame(0);
+//     }
+// }
