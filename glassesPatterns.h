@@ -1,19 +1,5 @@
 // Graphical pattern functions for glasses.
 
-void expandByte(byte col, byte value) {
-    for (byte i = 0; i < 8; i++) {
-        GlassesPWM[col][i][0] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
-        value <<= 1;
-    }
-}
-
-void expandByteRev(byte col, byte value) {
-    for (byte i = 0; i < 8; i++) {
-        GlassesPWM[col][i][0] = value & 0b00000001 ? SOLID_PIXEL : EMPTY_PIXEL;
-        value >>= 1;
-    }
-}
-
 // Draw a sine wave on the bit array.
 // Speeds up and slows down in a cycle.
 float sinesIncRval;
@@ -29,10 +15,10 @@ void sines() {
     }
 
     for (int i = 0; i < NUM_LED_COLS; i++) {
-        expandByte(i, 3 << (int)(sin(i / 2.0 + sinesIncRval) * 3.5 + 3.5));
+        expandByte(i, 3 << (int)(sin(i / 2.0 + sinesIncRval) * 3.5 + 3.5), false, 0);
     }
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 
     sinesIncRval += sinesIncr;
     if (sinesIncreasing) sinesIncr += 0.001;
@@ -61,28 +47,9 @@ void plasma() {
         }
     }
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
     plasOffset += 15;
     if (plasOffset > 359) plasOffset -= 359;
-}
-
-#define FADE_FACTOR_SLOW 0.9
-#define FADE_FACTOR_MEDI 0.8
-#define FADE_FACTOR_FAST 0.7
-void mulAllPWM(float q, byte frame) {
-    for (int x = 0; x < NUM_LED_COLS; x++) {
-        for (int y = 0; y < NUM_LED_ROWS; y++) {
-            GlassesPWM[x][y][frame] *= q;
-        }
-    }
-}
-
-void addAllPWM(float q, byte frame) {
-    for (int x = 0; x < NUM_LED_COLS; x++) {
-        for (int y = 0; y < NUM_LED_ROWS; y++) {
-            GlassesPWM[x][y][frame] += q;
-        }
-    }
 }
 
 // Initialize / load message string
@@ -135,6 +102,52 @@ void scrollMessage(byte message, byte mode) {
     else delay(10);
 }
 
+void scrollMessage2x(byte messageId) {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        initMessage(messageId);
+        patternInit = true;
+    }
+
+    // if ((currentCharColumn % 2 == 0) || mode != SCROLL2X) scrollBits(1, 0);
+    // else scrollBits(1, 1);
+
+    if (currentCharColumn % 2 == 0) hScrollPWM(0, false, false);
+    else hScrollPWM(1, false, false);
+
+    // if ((currentCharColumn % 2 == 1) || mode != SCROLL2X) {
+    //     GlassesBits[23][0] = charBuffer[currentCharColumn];
+    //     writeBitFrame(0, 0);
+    // }
+    // else {
+    //     GlassesBits[23][1] = charBuffer[currentCharColumn];
+    //     writeBitFrame(0,1);
+    // }
+
+    if (currentCharColumn % 2 == 1) {
+        expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, 0);
+        writePWMFrame(0, 0);
+    }
+    else {
+        expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, 1);
+        writePWMFrame(0, 1);
+    }
+
+    currentCharColumn++;
+    if (currentCharColumn >= 8) {
+        currentCharColumn = 0;
+        currentMessageChar++;
+        char nextChar = loadStringChar(messageId, currentMessageChar);
+        if (nextChar == 0) {
+            currentMessageChar = 0;
+            nextChar = loadStringChar(messageId, currentMessageChar);
+        }
+        loadCharBuffer(nextChar);
+    }
+
+    delay(5);
+}
+
 #define MAX_RAIN_ACTION 20
 #define MAX_NEW_RAIN_DROPS_H 2
 #define MAX_NEW_RAIN_DROPS_V 4
@@ -156,7 +169,7 @@ void sideRain(bool increasing) {
 
         hScrollPWM(0, increasing, true);
 
-        writePWMFrame(0);
+        writePWMFrame(0, 0);
     }
 }
 
@@ -176,7 +189,7 @@ void rain(boolean increasing) {
 
         vScrollPWM(0, increasing, true);
 
-        writePWMFrame(0);
+        writePWMFrame(0, 0);
     }
 }
 
@@ -223,7 +236,7 @@ void starField() {
         }
     }
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 }
 
 byte blinkAction = 0;
@@ -253,7 +266,7 @@ void fullOn() {
         }
     }
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 }
 
 int slantPos = 23;
@@ -277,7 +290,7 @@ void slantBars() {
         slantPos--;
         if (slantPos < 0) slantPos = 23;
 
-        writePWMFrame(0);
+        writePWMFrame(0, 0);
     }
 }
 
@@ -290,7 +303,7 @@ void sparkles() {
 
     mulAllPWM(FADE_FACTOR_SLOW, 0);
     for (int i = 0; i < SPARKLE_COUNT; i++) GlassesPWM[random(0, NUM_LED_COLS)][random(0, NUM_LED_ROWS)][0] = SOLID_PIXEL;
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 }
 
 // Simply grab a character from the font and put it in the 8x8 section of both sides of the glasses.
@@ -303,11 +316,11 @@ void displayChar(int character) {
     loadCharBuffer(character);
 
     for (int i = 0; i < 8; i++) {
-        expandByteRev(i+1, charBuffer[i]);
-        expandByteRev(i+15, charBuffer[i]);
+        expandByte(i+1, charBuffer[i], true, 0);
+        expandByte(i+15, charBuffer[i], true, 0);
     }
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 }
 
 // Draw various emoticon style faces.
@@ -326,67 +339,67 @@ void emote() {
             case 0:
                 loadCharBuffer('X');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+2, charBuffer[i]);
+                    expandByte(i+2, charBuffer[i], true, 0);
                 }
 
                 loadCharBuffer('X');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+15, charBuffer[i]);
+                    expandByte(i+15, charBuffer[i], true, 0);
                 }
                 break;
             case 1:
                 loadCharBuffer('?');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+2, charBuffer[i]);
+                    expandByte(i+2, charBuffer[i], true, 0);
                 }
 
                 loadCharBuffer('?');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+15, charBuffer[i]);
+                    expandByte(i+15, charBuffer[i], true, 0);
                 }
                 break;
             case 2:
                 loadCharBuffer('O');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+2, charBuffer[i]);
+                    expandByte(i+2, charBuffer[i], true, 0);
                 }
 
                 loadCharBuffer('o');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+15, charBuffer[i]);
+                    expandByte(i+15, charBuffer[i], true, 0);
                 }
                 break;
             case 3:
                 loadCharBuffer('>');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+2, charBuffer[i]);
+                    expandByte(i+2, charBuffer[i], true, 0);
                 }
 
                 loadCharBuffer('<');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+15, charBuffer[i]);
+                    expandByte(i+15, charBuffer[i], true, 0);
                 }
                 break;
             case 4:
                 loadCharBuffer('o');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+2, charBuffer[i]);
+                    expandByte(i+2, charBuffer[i], true, 0);
                 }
 
                 loadCharBuffer('O');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+15, charBuffer[i]);
+                    expandByte(i+15, charBuffer[i], true, 0);
                 }
                 break;
             case 5:
                 loadCharBuffer('^');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+2, charBuffer[i]);
+                    expandByte(i+2, charBuffer[i], true, 0);
                 }
 
                 loadCharBuffer('^');
                 for (int i = 0; i < 8; i++) {
-                    expandByteRev(i+15, charBuffer[i]);
+                    expandByte(i+15, charBuffer[i], true, 0);
                 }
                 break;
         }
@@ -396,7 +409,7 @@ void emote() {
 
     emotecounter = (emotecounter + 1) % EMOTE_DELAY;
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 }
 
 int fireAction = 0;
@@ -441,13 +454,13 @@ void fire() {
             }
         }
 
-        writePWMFrame(0);
+        writePWMFrame(0, 0);
     }
 }
 
 void loadGraphicsFrame(int frame) {
     for (int x = 0; x < NUM_LED_COLS; x++) {
-        expandByteRev(x, pgm_read_byte(BeatingHeartFrames[frame]+x));
+        expandByte(x, pgm_read_byte(BeatingHeartFrames[frame]+x), true, 0);
     }
 }
 
@@ -470,7 +483,7 @@ void beatingHearts() {
         currentHeartFrame++;
         if (currentHeartFrame > 5) currentHeartFrame = 0;
 
-        writePWMFrame(0);
+        writePWMFrame(0, 0);
     }
 }
 
@@ -511,10 +524,10 @@ void fakeEQ() {
     // render the bars if something visible has happened
     if (eqDecay == 0 || eqRandomizerDelay == 0) {
         for (byte i = 0; i < 12; i++) {
-            expandByteRev(i*2, 0xFF << (8 - eqLevels[i]));
-            expandByteRev(i*2+1, 0xFF << (8 - eqLevels[i]));
+            expandByte(i*2, 0xFF << (8 - eqLevels[i]), true, 0);
+            expandByte(i*2+1, 0xFF << (8 - eqLevels[i]), true, 0);
         }
-        writePWMFrame(0);
+        writePWMFrame(0, 0);
     }
 }
 
@@ -549,8 +562,8 @@ void rider() {
     pRider = easeInOutSine(tRider, 0, (NUM_LED_COLS - 0.1), EASING_DURATION);
 
     mulAllPWM(FADE_FACTOR_SLOW, 0);
-    expandByte((byte)pRider, 0b11111111);
-    writePWMFrame(0);
+    expandByte((byte)pRider, 0b11111111, false, 0);
+    writePWMFrame(0, 0);
 
     if (tRider >= EASING_DURATION && dirRider > 0) {
         tRider = EASING_DURATION;
@@ -646,7 +659,7 @@ void ripple() {
         ripples[i].currSize += ripples[i].sizeInc;
     }
 
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
 }
 
 #define MAX_NUM_FIREWORKS 3
@@ -664,76 +677,128 @@ void fireworks() {
     }
 }
 
+bool drawAnimeStarburst(int x, int y, int n, int i, byte v) {
+    // If we have a spoke of length zero, return without drawing anything.
+    if (n <= 0) return false;
+    // For a given spoke length n, there are 2*n frames in the starburst animation, and the last one is empty.
+    if (i >= 2 * n) return false;
+    if (i >= 2 * n - 1) return true;
+
+    // Build up.
+    if (i < n) {
+        for (byte t = 1; t <= i; t++) {
+            smartPlot(x + t,     y, v);
+            smartPlot(x - t,     y, v);
+            smartPlot(    x, y + t, v);
+            smartPlot(    x, y - t, v);
+        }
+
+        smartPlot(x, y, v);
+    }
+    // Decay.
+    else {
+        int q = 2 * n - i - 1;
+        int o = n - 1;
+        for (byte t = 0; t < q; t++) {
+            smartPlot(x + o - t,         y, v);
+            smartPlot(x - o + t,         y, v);
+            smartPlot(        x, y - o + t, v);
+            smartPlot(        x, y + o - t, v);
+        }
+    }
+
+    return true;
+}
+
+#define STARBURST_SPOKE_LENGTH 3
+int counter;
+void testStarbursts() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        counter = 0;
+    }
+
+    fillPWMFrame(0, EMPTY_PIXEL);
+    drawAnimeStarburst(3, 3, STARBURST_SPOKE_LENGTH, counter, SOLID_PIXEL);
+    drawAnimeStarburst(20, 3, STARBURST_SPOKE_LENGTH, counter, SOLID_PIXEL);
+    writePWMFrame(0, 0);
+    counter = (counter + 1) % (STARBURST_SPOKE_LENGTH * 2);
+    delay(50);
+}
+
 enum AnimeShadeStates {
     BEFORE_FLASH,
     GENERATE_FLASH,
     RIDE_FLASH,
     AFTER_FLASH,
     GRADIENT_FILL,
-    SPARKLE,
+    STARBURSTS,
+    FADE_OUT,
 };
 
 #define ANIME_FLASH_WIDTH 5
-#define ANIME_BEFORE_FLASH_DELAY 0
-#define ANIME_AFTER_FLASH_DELAY 250
+#define ANIME_BEFORE_FLASH_MS_DELAY 100
+#define ANIME_AFTER_FLASH_MS_DELAY 250
 #define ANIME_GRADIENT_INCR 51
-#define ANIME_GRADIENT_DELAY 10
-#define ANIME_MAX_NUM_SPARKLE_TWIRLS 4
-#define ANIME_SPARKLE_ORIGIN_X 20
-#define ANIME_SPARKLE_ORIGIN_Y 2
-#define ANIME_SPARKLE_RADIUS 3.5
+#define ANIME_GRADIENT_MS_DELAY 10
+#define ANIME_STARBURST_SPOKE_LENGTH 3
+#define ANIME_MAX_NUM_STARBURSTS 3
+#define ANIME_STARBURST_OFFSET_DELAY 4
+#define ANIME_STARBURST_MS_DELAY 35
+#define ANIME_FADE_OUT_MS_DELAY 10
 #define DEG_TO_RAD 0.0174533
-AnimeShadeStates state;
-int flashStep;
-byte flashByte;
-byte animeScrollCountdown;
-int animeSparkleTheta;
-float x0a, y0a, x1a, y1a;   // First sparkle spoke
-float x0b, y0b, x1b, y1b;   // Second sparkle spoke
-float cosTheta, sinTheta;
+AnimeShadeStates animeState;
+int animeFlashStep;
+byte animeFlashByte;
+byte animeFrameCounter;
+int animeStarbustStep;
+const byte animeStarburstXPoses[ANIME_MAX_NUM_STARBURSTS] = {15, 18, 21};
+const byte animeStarburstYPoses[ANIME_MAX_NUM_STARBURSTS] = {3, 2, 4};
+bool animeStarburstActivity;
 void animeShades() {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
-        state = BEFORE_FLASH;
+        animeState = BEFORE_FLASH;
     }
 
-    if (state == BEFORE_FLASH) {
-        delay(ANIME_BEFORE_FLASH_DELAY);
-        state = GENERATE_FLASH;
-        flashStep = 1;
+    if (animeState == BEFORE_FLASH) {
+        delay(ANIME_BEFORE_FLASH_MS_DELAY);
+        animeState = GENERATE_FLASH;
+        animeFlashStep = 1;
     }
-    else if (state == GENERATE_FLASH) {
-        flashByte = (~(255 << min(flashStep, ANIME_FLASH_WIDTH))) << max(0, flashStep - ANIME_FLASH_WIDTH);
-        if (flashByte != 0) {
+    else if (animeState == GENERATE_FLASH) {
+        animeFlashByte = (~(255 << min(animeFlashStep, ANIME_FLASH_WIDTH))) << max(0, animeFlashStep - ANIME_FLASH_WIDTH);
+        if (animeFlashByte != 0) {
             hScrollPWM(0, true, false);
-            expandByteRev(0, flashByte);
-            writePWMFrame(0);
-            flashStep++;
+            expandByte(0, animeFlashByte, true, 0);
+            writePWMFrame(0, 0);
+            animeFlashStep++;
         }
         else {
-            state = RIDE_FLASH;
-            animeScrollCountdown = NUM_LED_COLS;
+            animeState = RIDE_FLASH;
+            animeFrameCounter = 0;
         }
     }
-    else if (state == RIDE_FLASH) {
+    else if (animeState == RIDE_FLASH) {
         // We should just need to scroll the pixels NUM_LED_COLS times.
-        if (animeScrollCountdown > 0) {
+        if (animeFrameCounter < NUM_LED_COLS) {
             hScrollPWM(0, true, false);
-            expandByte(0, 0);
-            writePWMFrame(0);
-            animeScrollCountdown--;
+            expandByte(0, 0, false, 0);
+            writePWMFrame(0, 0);
+            animeFrameCounter++;
         }
         else {
-            state = AFTER_FLASH;
+            animeState = AFTER_FLASH;
         }
     }
-    else if (state == AFTER_FLASH) {
+    else if (animeState == AFTER_FLASH) {
         // At this point, all LEDs should be off.
-        delay(ANIME_AFTER_FLASH_DELAY);
-        state = GRADIENT_FILL;
+        delay(ANIME_AFTER_FLASH_MS_DELAY);
+        animeState = GRADIENT_FILL;
     }
-    else if (state == GRADIENT_FILL) {
+    else if (animeState == GRADIENT_FILL) {
         // At this point, all LEDs should *still* be off.
         if (GlassesPWM[0][NUM_LED_ROWS - 1][0] < SOLID_PIXEL) {
             vScrollPWM(0, true, false);
@@ -742,45 +807,44 @@ void animeShades() {
                 GlassesPWM[x][0][0] = min(SOLID_PIXEL, GlassesPWM[x][0][0] + ANIME_GRADIENT_INCR);
             }
 
-            writePWMFrame(0);
-            delay(ANIME_GRADIENT_DELAY);
+            writePWMFrame(0, 0);
+            delay(ANIME_GRADIENT_MS_DELAY);
         }
         else {
-            state = SPARKLE;
-            animeSparkleTheta = 0;
+            animeState = STARBURSTS;
+            animeFrameCounter = 0;
+            animeStarbustStep = 0;
         }
     }
-    else if (state == SPARKLE) {
+    else if (animeState == STARBURSTS) {
         // At this point, all LEDs should be at max brightness.
+        animeStarburstActivity = false;
+        fillPWMFrame(0, EMPTY_PIXEL);
+        for (int i = 0; i < ANIME_MAX_NUM_STARBURSTS; i++) {
+            animeStarburstActivity |= drawAnimeStarburst(animeStarburstXPoses[i], animeStarburstYPoses[i],
+                ANIME_STARBURST_SPOKE_LENGTH, animeStarbustStep - (ANIME_STARBURST_OFFSET_DELAY * i), SOLID_PIXEL);
+        }
+        invertPWMFrame(0);
+        writePWMFrame(0, 0);
 
-        if (animeSparkleTheta / 360 <= ANIME_MAX_NUM_SPARKLE_TWIRLS) {
-            // Will need to set frame to all off, draw sparkle, and invert.
-            fillPWMFrame(0, EMPTY_PIXEL);
-            cosTheta = cos(animeSparkleTheta * DEG_TO_RAD);
-            sinTheta = sin(animeSparkleTheta * DEG_TO_RAD);
-            x0a =  ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_X;
-            y0a = -ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_Y;
-            x1a = -ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_X;
-            y1a =  ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_Y;
-            x0b = -ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_X;
-            y0b = -ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_Y;
-            x1b =  ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_X;
-            y1b =  ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_Y;
-
-            wuLine(x0a, y0a, x1a, y1a);
-            wuLine(x0b, y0b, x1b, y1b);
-            wuEllipse(ANIME_SPARKLE_ORIGIN_X, ANIME_SPARKLE_ORIGIN_Y, 2, 2);
-
-            invertPWMFrame(0);
-
-            writePWMFrame(0);
-
-            animeSparkleTheta += 25;
-            delay(5);
+        if (animeStarburstActivity) {
+            animeStarbustStep++;
+            delay(ANIME_STARBURST_MS_DELAY);
+        }
+        else {
+            fillPWMFrame(0, SOLID_PIXEL);
+            animeState = FADE_OUT;
+        }
+    }
+    else if (animeState == FADE_OUT) {
+        if (GlassesPWM[0][0][0] > EMPTY_PIXEL) {
+            mulAllPWM(FADE_FACTOR_MEDI, 0);
+            writePWMFrame(0, 0);
+            delay(ANIME_FADE_OUT_MS_DELAY);
         }
         else {
             fillPWMFrame(0, EMPTY_PIXEL);
-            state = BEFORE_FLASH;
+            animeState = BEFORE_FLASH;
         }
     }
 }

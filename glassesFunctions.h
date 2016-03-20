@@ -46,7 +46,7 @@ void writeBitFrame(byte frame, byte bitbuffer) {
 
 // Send contents of PWM frame to correct AS1130 registers
 // Rough, needs to be streamlined
-void writePWMFrame(byte frame) {
+void writePWMFrame(byte frame, byte bytebuffer) {
     Wire.beginTransmission(I2C_ADDR_AS1130_R);
     Wire.write(REGISTER_SELECT);
     Wire.write(frame + MEMORY_BLINK_PWM_START);
@@ -56,7 +56,7 @@ void writePWMFrame(byte frame) {
         Wire.beginTransmission(I2C_ADDR_AS1130_R);
         Wire.write(26+x*11);
         for (int y = 0; y < 8; y++) {
-            Wire.write(GlassesPWM[x][y][0]);
+            Wire.write(GlassesPWM[x][y][bytebuffer]);
         }
         Wire.endTransmission();
     }
@@ -70,7 +70,7 @@ void writePWMFrame(byte frame) {
         Wire.beginTransmission(I2C_ADDR_AS1130_L);
         Wire.write(26+x*11);
         for (int y = 0; y < 8; y++) {
-            Wire.write(GlassesPWM[x+12][y][0]);
+            Wire.write(GlassesPWM[x+12][y][bytebuffer]);
         }
         Wire.endTransmission();
     }
@@ -216,7 +216,7 @@ void glassesInit() {
     setClockSync(I2C_ADDR_AS1130_L, AS1130_clock_speed_1MHz, AS1130_sync_OUT);
 
     fillPWMFrame(0, 255);
-    writePWMFrame(0);
+    writePWMFrame(0, 0);
     fillBitFrame(0, 0);
     writeBitFrame(0, 0);
     fillBlinkFrame(0, 0);
@@ -233,13 +233,42 @@ void switchDrawType(byte frame, byte enablePWM) {
         fillBitFrame(frame, 0);
         writeBitFrame(frame, 0);
         fillPWMFrame(frame, 255);
-        writePWMFrame(frame);
+        writePWMFrame(frame, 0);
     }
     else if (enablePWM == 1) {
         fillPWMFrame(frame, 0);
-        writePWMFrame(frame);
+        writePWMFrame(frame, 0);
         fillBitFrame(frame, 1);
         writeBitFrame(frame, 0);
+    }
+}
+
+#define FADE_FACTOR_SLOW 0.9
+#define FADE_FACTOR_MEDI 0.8
+#define FADE_FACTOR_FAST 0.7
+void mulAllPWM(float q, byte frame) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
+            GlassesPWM[x][y][frame] *= q;
+        }
+    }
+}
+
+void addAllPWM(float q, byte frame) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
+            GlassesPWM[x][y][frame] += q;
+        }
+    }
+}
+
+void expandByte(byte col, byte value, bool reverse, byte frame) {
+    int index;
+    for (byte i = 0; i < NUM_LED_ROWS; i++) {
+        if (reverse) index = NUM_LED_ROWS - i - 1;
+        else index = i;
+        GlassesPWM[col][index][frame] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
+        value <<= 1;
     }
 }
 

@@ -115,6 +115,7 @@ void loop() {
     switch(currentPattern) {
         case 0:
             animeShades();
+            //testStarbursts();
             break;
         case 1:
             ripple();
@@ -138,10 +139,10 @@ void loop() {
             sideRain(true);
             break;
         case 8:
-            sparkles();
+            scrollMessage(2, SCROLL2X);
             break;
         case 9:
-            scrollMessage(2, SCROLL2X);
+            scrollMessage2x(2);
             break;
         case 10:
             rain(true);
