@@ -1,14 +1,5 @@
 // Graphical pattern functions for glasses.
 
-//// GLOBALS
-float incRval = 0;
-float incr = 0.3;
-byte incDir = 1;
-
-float offset  = 0;
-float plasIncr = -1;
-float plasVector = 0;
-
 void expandByte(byte col, byte value) {
     for (byte i = 0; i < 8; i++) {
         GlassesPWM[col][i][0] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
@@ -25,34 +16,41 @@ void expandByteRev(byte col, byte value) {
 
 // Draw a sine wave on the bit array.
 // Speeds up and slows down in a cycle.
+float sinesIncRval;
+float sinesIncr;
+bool sinesIncreasing;
 void sines() {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
+        sinesIncRval = 0;
+        sinesIncr = 0.3;
+        sinesIncreasing = true;
     }
 
     for (int i = 0; i < NUM_LED_COLS; i++) {
-        expandByte(i, 3 << (int)(sin(i / 2.0 + incRval) * 3.5 + 3.5));
+        expandByte(i, 3 << (int)(sin(i / 2.0 + sinesIncRval) * 3.5 + 3.5));
     }
 
     writePWMFrame(0);
 
-    incRval += incr;
-    if (incDir == 1) incr += 0.001;
-    else incr -= 0.001;
+    sinesIncRval += sinesIncr;
+    if (sinesIncreasing) sinesIncr += 0.001;
+    else sinesIncr -= 0.001;
 
-    if (incr > 0.5) incDir = 0;
-    if (incr < 0.1) incDir = 1;
+    if (sinesIncr > 0.5) sinesIncreasing = false;
+    if (sinesIncr < 0.1) sinesIncreasing = true;
 
     delay(5);
 }
 
 // Draw a circular sine plasma.
-int plasOffset = 0;
+int plasOffset;
 void plasma() {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
+        plasOffset = 0;
     }
 
     for (int x = 0; x < NUM_LED_COLS; x++) {
@@ -68,27 +66,23 @@ void plasma() {
     if (plasOffset > 359) plasOffset -= 359;
 }
 
-void fadeAllPWM(float f) {
+#define FADE_FACTOR_SLOW 0.9
+#define FADE_FACTOR_MEDI 0.8
+#define FADE_FACTOR_FAST 0.7
+void mulAllPWM(float q, byte frame) {
     for (int x = 0; x < NUM_LED_COLS; x++) {
         for (int y = 0; y < NUM_LED_ROWS; y++) {
-            GlassesPWM[x][y][0] *= f;
+            GlassesPWM[x][y][frame] *= q;
         }
     }
 }
 
-#define FADE_INCREMENT_SLOW 0.9
-#define FADE_INCREMENT_MED 0.8
-#define FADE_INCREMENT_FAST 0.7
-void fadeAllPWMSlow() {
-    fadeAllPWM(FADE_INCREMENT_SLOW);
-}
-
-void fadeAllPWMMed() {
-    fadeAllPWM(FADE_INCREMENT_MED);
-}
-
-void fadeAllPWMFast() {
-    fadeAllPWM(FADE_INCREMENT_FAST);
+void addAllPWM(float q, byte frame) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
+            GlassesPWM[x][y][frame] += q;
+        }
+    }
 }
 
 // Initialize / load message string
@@ -141,55 +135,46 @@ void scrollMessage(byte message, byte mode) {
     else delay(10);
 }
 
-#define RAIN_DELAY 20
-int rainAction = 0;
-void sideRain(byte dir) {
+#define MAX_RAIN_ACTION 20
+#define MAX_NEW_RAIN_DROPS_H 2
+#define MAX_NEW_RAIN_DROPS_V 4
+int rainAction;
+void sideRain(bool increasing) {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
+        rainAction = 0;
     }
 
-    if (rainAction++ > RAIN_DELAY) {
+    if (rainAction++ > MAX_RAIN_ACTION) {
         rainAction = 0;
 
-        byte tempRain = 0;
-
-        tempRain = (1 << random(0,8)) | (1 << random(0,8));
-
-        if (dir == 0) {
-            hScrollPWM(true);
-            expandByte(0, tempRain);
+        fillScrollBufferH(0);
+        for (int i = 0; i < MAX_NEW_RAIN_DROPS_H; i++) {
+            ScrollBufferH[random(0, NUM_LED_ROWS)] = SOLID_PIXEL;
         }
-        else {
-            hScrollPWM(false);
-            expandByte(23, tempRain);
-        }
+
+        hScrollPWM(0, increasing, true);
 
         writePWMFrame(0);
     }
 }
 
-byte vRainCols[NUM_LED_COLS] = {0};
-
-void rain(boolean up) {
+void rain(boolean increasing) {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
     }
 
-    if (rainAction++ > RAIN_DELAY) {
+    if (rainAction++ > MAX_RAIN_ACTION) {
         rainAction = 0;
 
-        for (int i = 0; i < 24; i++) {
-            vRainCols[i] <<= 1;
+        fillScrollBufferV(0);
+        for (int i = 0; i < MAX_NEW_RAIN_DROPS_V; i++) {
+            ScrollBufferV[random(0, NUM_LED_COLS)] = SOLID_PIXEL;
         }
 
-        vRainCols[random(0,24)] |= 1;
-        vRainCols[random(0,24)] |= 1;
-
-        for (int i = 0; i < 24; i++) {
-            up ? expandByte(i, vRainCols[i]) : expandByteRev(i, vRainCols[i]);
-        }
+        vScrollPWM(0, increasing, true);
 
         writePWMFrame(0);
     }
@@ -214,7 +199,7 @@ void starField() {
         patternInit = true;
     }
 
-    fadeAllPWMSlow();
+    mulAllPWM(FADE_FACTOR_SLOW, 0);
     for (int i = 0; i < NUM_STARS; i++) {
         if (abs(stars[i].xIncr) < STAR_MIN_X_INCR || abs(stars[i].yIncr) < STAR_MIN_Y_INCR) {
             stars[i].xPos = (NUM_LED_COLS - 1) / 2.0;
@@ -303,43 +288,10 @@ void sparkles() {
         patternInit = true;
     }
 
-    fadeAllPWMSlow();
-    for (int i = 0; i < SPARKLE_COUNT; i++) GlassesPWM[random(0, 24)][random(0, 8)][0] = 255;
+    mulAllPWM(FADE_FACTOR_SLOW, 0);
+    for (int i = 0; i < SPARKLE_COUNT; i++) GlassesPWM[random(0, NUM_LED_COLS)][random(0, NUM_LED_ROWS)][0] = SOLID_PIXEL;
     writePWMFrame(0);
 }
-
-// int riderCount = 0;
-// int riderPos = 0;
-// int tpos = 0;
-// void rider() {
-//     if (!patternInit) {
-//         switchDrawType(0, 1);
-//         patternInit = true;
-//         riderCount = 0;
-//         riderPos = 0;
-//         tpos = 0;
-//     }
-
-//     fadeAllPWMSlow();
-//     if (riderCount++ > 5) {
-//         riderCount = 0;
-
-//         if (riderPos < 8)           tpos = riderPos;
-//         else if (riderPos < 12)     tpos = -1;
-//         else if (riderPos < 20)     tpos = 19 - riderPos;
-//         else if (riderPos <= 40)    tpos = -1;
-//         else if (riderPos > 40)     riderPos = 0;
-
-//         for (int x = tpos*3; x < (tpos * 3 + 3); x++) {
-//             for (int y = 0; y < 8; y++) {
-//                 GlassesPWM[x][y][0] = pgm_read_byte(&Cie1931LookupTable[255*(tpos != -1)]);
-//             }
-//         }
-
-//         riderPos++;
-//         writePWMFrame(0);
-//     }
-// }
 
 // Simply grab a character from the font and put it in the 8x8 section of both sides of the glasses.
 void displayChar(int character) {
@@ -596,7 +548,7 @@ void rider() {
 
     pRider = easeInOutSine(tRider, 0, (NUM_LED_COLS - 0.1), EASING_DURATION);
 
-    fadeAllPWMSlow();
+    mulAllPWM(FADE_FACTOR_SLOW, 0);
     expandByte((byte)pRider, 0b11111111);
     writePWMFrame(0);
 
@@ -664,45 +616,37 @@ typedef struct Ripple {
     byte maxSize;
     float currSize;
     float sizeInc;
-    int currDelay;
 };
 
 Ripple ripples[MAX_NUM_RIPPLES];
-byte currentRippleDelay;
 
 void ripple() {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
-        currentRippleDelay = RIPPLE_FRAME_DELAY;
     }
 
-    if (currentRippleDelay > 0) currentRippleDelay--;
-    else {
-        fadeAllPWMMed();
-        for (int i = 0; i < MAX_NUM_RIPPLES; i++) {
-            if (ripples[i].maxSize < 4) {
-                ripples[i].xPos = random(0, NUM_LED_COLS);
-                ripples[i].yPos = random(0, NUM_LED_ROWS);
-                ripples[i].maxSize = random(4, 10);
-                ripples[i].currSize = 0.0;
-                ripples[i].sizeInc = ripples[i].maxSize / (random(20, 30) * 1.0);
-                ripples[i].currDelay = RIPPLE_FRAME_DELAY;
-            }
-
-            if (ripples[i].currSize > ripples[i].maxSize) {
-                ripples[i].maxSize = 0;
-            }
-            else {
-                wuEllipse(ripples[i].xPos, ripples[i].yPos, ripples[i].currSize, ripples[i].currSize);
-            }
-
-            ripples[i].currSize += ripples[i].sizeInc;
+    mulAllPWM(FADE_FACTOR_SLOW, 0);
+    for (int i = 0; i < MAX_NUM_RIPPLES; i++) {
+        if (ripples[i].maxSize < 4) {
+            ripples[i].xPos = random(0, NUM_LED_COLS);
+            ripples[i].yPos = random(0, NUM_LED_ROWS);
+            ripples[i].maxSize = random(4, 10);
+            ripples[i].currSize = 0.0;
+            ripples[i].sizeInc = ripples[i].maxSize / (random(20, 30) * 1.0);
         }
 
-        writePWMFrame(0);
-        currentRippleDelay = RIPPLE_FRAME_DELAY;
+        if (ripples[i].currSize > ripples[i].maxSize) {
+            ripples[i].maxSize = 0;
+        }
+        else {
+            wuEllipse(ripples[i].xPos, ripples[i].yPos, ripples[i].currSize, ripples[i].currSize);
+        }
+
+        ripples[i].currSize += ripples[i].sizeInc;
     }
+
+    writePWMFrame(0);
 }
 
 #define MAX_NUM_FIREWORKS 3
@@ -721,38 +665,48 @@ void fireworks() {
 }
 
 enum AnimeShadeStates {
-    BEFORE_FLASH_DELAY,
+    BEFORE_FLASH,
     GENERATE_FLASH,
     RIDE_FLASH,
-    AFTER_FLASH_DELAY,
+    AFTER_FLASH,
     GRADIENT_FILL,
     SPARKLE,
 };
 
-#define FLASH_WIDTH 5
-#define BEFORE_FLASH_DELAY_AMOUNT 0
-#define AFTER_FLASH_DELAY_AMOUNT 1000
-#define ANIME_GRADIENT_STEPS 5
+#define ANIME_FLASH_WIDTH 5
+#define ANIME_BEFORE_FLASH_DELAY 0
+#define ANIME_AFTER_FLASH_DELAY 250
+#define ANIME_GRADIENT_INCR 51
+#define ANIME_GRADIENT_DELAY 10
+#define ANIME_MAX_NUM_SPARKLE_TWIRLS 4
+#define ANIME_SPARKLE_ORIGIN_X 20
+#define ANIME_SPARKLE_ORIGIN_Y 2
+#define ANIME_SPARKLE_RADIUS 3.5
+#define DEG_TO_RAD 0.0174533
 AnimeShadeStates state;
 int flashStep;
 byte flashByte;
 byte animeScrollCountdown;
+int animeSparkleTheta;
+float x0a, y0a, x1a, y1a;   // First sparkle spoke
+float x0b, y0b, x1b, y1b;   // Second sparkle spoke
+float cosTheta, sinTheta;
 void animeShades() {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
-        state = BEFORE_FLASH_DELAY;
+        state = BEFORE_FLASH;
     }
 
-    if (state == BEFORE_FLASH_DELAY) {
-        delay(BEFORE_FLASH_DELAY_AMOUNT);
+    if (state == BEFORE_FLASH) {
+        delay(ANIME_BEFORE_FLASH_DELAY);
         state = GENERATE_FLASH;
         flashStep = 1;
     }
     else if (state == GENERATE_FLASH) {
-        flashByte = (~(255 << min(flashStep, FLASH_WIDTH))) << max(0, flashStep - FLASH_WIDTH);
+        flashByte = (~(255 << min(flashStep, ANIME_FLASH_WIDTH))) << max(0, flashStep - ANIME_FLASH_WIDTH);
         if (flashByte != 0) {
-            hScrollPWM(true);
+            hScrollPWM(0, true, false);
             expandByteRev(0, flashByte);
             writePWMFrame(0);
             flashStep++;
@@ -765,71 +719,68 @@ void animeShades() {
     else if (state == RIDE_FLASH) {
         // We should just need to scroll the pixels NUM_LED_COLS times.
         if (animeScrollCountdown > 0) {
-            hScrollPWM(true);
+            hScrollPWM(0, true, false);
             expandByte(0, 0);
             writePWMFrame(0);
             animeScrollCountdown--;
         }
         else {
-            state = AFTER_FLASH_DELAY;
+            state = AFTER_FLASH;
         }
     }
-    else if (state == AFTER_FLASH_DELAY) {
+    else if (state == AFTER_FLASH) {
         // At this point, all LEDs should be off.
-        delay(AFTER_FLASH_DELAY_AMOUNT);
+        delay(ANIME_AFTER_FLASH_DELAY);
         state = GRADIENT_FILL;
     }
     else if (state == GRADIENT_FILL) {
         // At this point, all LEDs should *still* be off.
-        state = SPARKLE;
+        if (GlassesPWM[0][NUM_LED_ROWS - 1][0] < SOLID_PIXEL) {
+            vScrollPWM(0, true, false);
+
+            for (int x = 0; x < NUM_LED_COLS; x++) {
+                GlassesPWM[x][0][0] = min(SOLID_PIXEL, GlassesPWM[x][0][0] + ANIME_GRADIENT_INCR);
+            }
+
+            writePWMFrame(0);
+            delay(ANIME_GRADIENT_DELAY);
+        }
+        else {
+            state = SPARKLE;
+            animeSparkleTheta = 0;
+        }
     }
     else if (state == SPARKLE) {
-        // Clear display.
-        fillPWMFrame(0, 0);
-        state = BEFORE_FLASH_DELAY;
+        // At this point, all LEDs should be at max brightness.
+
+        if (animeSparkleTheta / 360 <= ANIME_MAX_NUM_SPARKLE_TWIRLS) {
+            // Will need to set frame to all off, draw sparkle, and invert.
+            fillPWMFrame(0, EMPTY_PIXEL);
+            cosTheta = cos(animeSparkleTheta * DEG_TO_RAD);
+            sinTheta = sin(animeSparkleTheta * DEG_TO_RAD);
+            x0a =  ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_X;
+            y0a = -ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_Y;
+            x1a = -ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_X;
+            y1a =  ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_Y;
+            x0b = -ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_X;
+            y0b = -ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_Y;
+            x1b =  ANIME_SPARKLE_RADIUS * cosTheta + ANIME_SPARKLE_ORIGIN_X;
+            y1b =  ANIME_SPARKLE_RADIUS * sinTheta + ANIME_SPARKLE_ORIGIN_Y;
+
+            wuLine(x0a, y0a, x1a, y1a);
+            wuLine(x0b, y0b, x1b, y1b);
+            wuEllipse(ANIME_SPARKLE_ORIGIN_X, ANIME_SPARKLE_ORIGIN_Y, 2, 2);
+
+            invertPWMFrame(0);
+
+            writePWMFrame(0);
+
+            animeSparkleTheta += 25;
+            delay(5);
+        }
+        else {
+            fillPWMFrame(0, EMPTY_PIXEL);
+            state = BEFORE_FLASH;
+        }
     }
 }
-
-// #define LINE_WALK_DISTANCE 8
-// float wlTXPos;
-// float wlBXPos;
-// bool wlUseTop;
-// byte wlCountdown;
-// void walkingLines() {
-//     if (!patternInit) {
-//         switchDrawType(0, 1);
-//         patternInit = true;
-//         wlTXPos = -LINE_WALK_DISTANCE / 2 + 0.5;
-//         wlBXPos = 0.5;
-//         wlUseTop = true;
-//         wlCountdown = LINE_WALK_DISTANCE;
-//     }
-
-//     if (wlCountdown > 0) {
-//         fadeAllPWMSlow();
-//         wuLine(wlTXPos, 0, wlBXPos, NUM_LED_ROWS - 1);
-//         if (wlUseTop) wlTXPos++;
-//         else wlBXPos++;
-//         wlCountdown--;
-//     }
-//     else {
-//         wlUseTop = !wlUseTop;
-//         wlCountdown = LINE_WALK_DISTANCE;
-//         if (wlTXPos >= NUM_LED_COLS && wlBXPos >= NUM_LED_COLS) {
-//             wlTXPos = -LINE_WALK_DISTANCE / 2 + 0.5;
-//             wlBXPos = 0.5;
-//             wlUseTop = true;
-//         }
-//     }
-
-//     writePWMFrame(0);
-// }
-
-// void lineTest() {
-//     if (!patternInit) {
-//         switchDrawType(0, 1);
-//         patternInit = true;
-//         wuLine(20, 1, 1, 4);
-//         writePWMFrame(0);
-//     }
-// }

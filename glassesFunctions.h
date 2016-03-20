@@ -141,7 +141,7 @@ void fillBlinkFrame(byte frame, byte value) {
 void invertPWMFrame(byte frame) {
     for (int x = 0; x < NUM_LED_COLS; x++) {
         for (int y = 0; y < NUM_LED_ROWS; y++) {
-            GlassesPWM[x][y][frame] = 255 - GlassesPWM[x][y][frame];
+            GlassesPWM[x][y][frame] = SOLID_PIXEL - GlassesPWM[x][y][frame];
         }
     }
 }
@@ -246,46 +246,58 @@ void switchDrawType(byte frame, byte enablePWM) {
 // Copy contents of PWM array one LED over
 // Possible to do in hardware at some future date
 // TODO: Add a "new" value, either a byte to fill, or a row/column buffer.
-void hScrollPWM(bool increasing) {
+byte ScrollBufferH[NUM_LED_ROWS] = {EMPTY_PIXEL};
+byte ScrollBufferV[NUM_LED_COLS] = {EMPTY_PIXEL};
+
+void fillScrollBufferH(byte val) {
+    for (int i = 0; i < NUM_LED_ROWS; i++) {
+        ScrollBufferH[i] = val;
+    }
+}
+
+void fillScrollBufferV(byte val) {
+    for (int i = 0; i < NUM_LED_COLS; i++) {
+        ScrollBufferV[i] = val;
+    }
+}
+
+void hScrollPWM(byte frame, bool increasing, bool useBuffer) {
     int i, j;
     for (i = 1; i < NUM_LED_COLS; i++) {
         for (j = 0; j < NUM_LED_ROWS; j++) {
-            // Shift index i-1 into i.
+            // Shift from lower to higher.
             if (increasing) GlassesPWM[NUM_LED_COLS - i][j][0] = GlassesPWM[NUM_LED_COLS - i - 1][j][0];
-            // Shift index i+1 into i.
-            else GlassesPWM[i - 1][j][0] = GlassesPWM[i][j][0];
+            // Shift from higher to lower.
+            else GlassesPWM[i - 1][j][frame] = GlassesPWM[i][j][frame];
+        }
+    }
+
+    if (useBuffer) {
+        for (int f = 0; f < NUM_LED_ROWS; f++) {
+            if (increasing) GlassesPWM[0][f][frame] = ScrollBufferH[f];
+            else GlassesPWM[NUM_LED_COLS - 1][f][frame] = ScrollBufferH[f];
         }
     }
 }
 
-// // TODO: Add a "new row" value, either a byte to fill, or a row buffer.
-// void vScrollPWM(bool increasing) {
-//     int i, j;
-//     for (i = 1; i < NUM_LED_COLS; i++) {
-//         for (j = 0; j < NUM_LED_ROWS; j++) {
-//             // Shift index i-1 into i.
-//             if (increasing) GlassesPWM[NUM_LED_COLS - i][j][0] = GlassesPWM[NUM_LED_COLS - i - 1][j][0];
-//             // Shift index i+1 into i.
-//             else GlassesPWM[i - 1][j][0] = GlassesPWM[i][j][0];
-//         }
-//     }
+void vScrollPWM(byte frame, bool increasing, bool useBuffer) {
+    int i, j;
+    for (i = 0; i < NUM_LED_COLS; i++) {
+        for (j = 1; j < NUM_LED_ROWS; j++) {
+            // Shift from lower to higher.
+            if (increasing) GlassesPWM[i][NUM_LED_ROWS - j][frame] = GlassesPWM[i][NUM_LED_ROWS - j - 1][frame];
+            // Shift from higher to lower.
+            else GlassesPWM[i][j - 1][frame] = GlassesPWM[i][j][frame];
+        }
+    }
 
-
-//     if (increasing) {
-//         for (int i = 1; i < NUM_LED_COLS; i++) {
-//             for (int j = 0; j < NUM_LED_ROWS; j++) {
-//                 GlassesPWM[NUM_LED_COLS - i][j][0] = GlassesPWM[NUM_LED_COLS-i-1][j][0];
-//             }
-//         }
-//     }
-//     else if (dir == 1) {
-//         for (int i = 1; i < NUM_LED_COLS; i++) {
-//             for (int j = 0; j < NUM_LED_ROWS; j++) {
-//                 GlassesPWM[i-1][j][0] = GlassesPWM[i][j][0];
-//             }
-//         }
-//     }
-// }
+    if (useBuffer) {
+        for (int f = 0; f < NUM_LED_COLS; f++) {
+            if (increasing) GlassesPWM[f][0][frame] = ScrollBufferV[f];
+            else GlassesPWM[f][NUM_LED_ROWS - 1][frame] = ScrollBufferV[f];
+        }
+    }
+}
 
 // Copy contents of bit array one LED over
 // Possible to do in hardware at some future date

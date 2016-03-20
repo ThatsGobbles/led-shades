@@ -135,7 +135,7 @@ void loop() {
             slantBars();
             break;
         case 7:
-            sideRain(0);
+            sideRain(true);
             break;
         case 8:
             sparkles();
