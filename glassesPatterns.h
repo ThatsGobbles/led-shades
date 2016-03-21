@@ -74,7 +74,7 @@ void scrollMessage(byte messageId) {
     // Odd, scroll 1 buffer
     // if (currentCharColumn % 2 == 0) hScrollPWM(0, false, false);
     // else hScrollPWM(1, false, false);
-    hScrollPWM(currentCharColumn % NUM_LED_BUFS, false, false);
+    hScrollPWM(currentCharColumn % NUM_LED_BUFS, false);
 
     // Even, write next column to 1 buffer and display it
     // Odd, write next column to 0 buffer and display it
@@ -104,49 +104,57 @@ void scrollMessage(byte messageId) {
     delay(3);
 }
 
-#define MAX_RAIN_ACTION 20
-#define MAX_NEW_RAIN_DROPS_H 2
-#define MAX_NEW_RAIN_DROPS_V 4
+#define H_RAIN_MAX_NEW_DROPS 2
+#define V_RAIN_MAX_NEW_DROPS 4
+#define H_RAIN_MS_DELAY 20
+#define V_RAIN_MS_DELAY 20
 int rainAction;
-void sideRain(bool increasing) {
+void hRain(bool increasing) {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
-        rainAction = 0;
     }
 
-    if (rainAction++ > MAX_RAIN_ACTION) {
-        rainAction = 0;
+    // fillScrollBufferH(0);
+    // for (int i = 0; i < H_RAIN_MAX_NEW_DROPS; i++) {
+    //     ScrollBufferH[random(0, NUM_LED_ROWS)] = SOLID_PIXEL;
+    // }
 
-        fillScrollBufferH(0);
-        for (int i = 0; i < MAX_NEW_RAIN_DROPS_H; i++) {
-            ScrollBufferH[random(0, NUM_LED_ROWS)] = SOLID_PIXEL;
-        }
+    hScrollPWM(0, increasing);
 
-        hScrollPWM(0, increasing, true);
-
-        writePWMFrame(0, 0);
+    for (int i = 0; i < NUM_LED_ROWS; i++) {
+        GlassesPWM[increasing ? 0 : NUM_LED_COLS - 1][i][0] = EMPTY_PIXEL;
     }
+    for (int i = 0; i < H_RAIN_MAX_NEW_DROPS; i++) {
+        GlassesPWM[increasing ? 0 : NUM_LED_COLS - 1][random(0, NUM_LED_ROWS)][0] = SOLID_PIXEL;
+    }
+
+    writePWMFrame(0, 0);
+    delay(H_RAIN_MS_DELAY);
 }
 
-void rain(boolean increasing) {
+void vRain(boolean increasing) {
     if (!patternInit) {
         switchDrawType(0, 1);
         patternInit = true;
     }
 
-    if (rainAction++ > MAX_RAIN_ACTION) {
-        rainAction = 0;
+    // fillScrollBufferV(0);
+    // for (int i = 0; i < V_RAIN_MAX_NEW_DROPS; i++) {
+    //     ScrollBufferV[random(0, NUM_LED_COLS)] = SOLID_PIXEL;
+    // }
 
-        fillScrollBufferV(0);
-        for (int i = 0; i < MAX_NEW_RAIN_DROPS_V; i++) {
-            ScrollBufferV[random(0, NUM_LED_COLS)] = SOLID_PIXEL;
-        }
+    vScrollPWM(0, increasing);
 
-        vScrollPWM(0, increasing, true);
-
-        writePWMFrame(0, 0);
+    for (int i = 0; i < NUM_LED_COLS; i++) {
+        GlassesPWM[i][increasing ? 0 : NUM_LED_ROWS - 1][0] = EMPTY_PIXEL;
     }
+    for (int i = 0; i < V_RAIN_MAX_NEW_DROPS; i++) {
+        GlassesPWM[random(0, NUM_LED_COLS)][increasing ? 0 : NUM_LED_ROWS - 1][0] = SOLID_PIXEL;
+    }
+
+    writePWMFrame(0, 0);
+    delay(V_RAIN_MS_DELAY);
 }
 
 typedef struct Stars {
@@ -487,18 +495,6 @@ void fakeEQ() {
     }
 }
 
-#define PI 3.14159
-// Adapted from http://gizma.com/easing/
-float easeInOutQuad(float t, float start, float change, float duration) {
-    t /= duration/2;
-    if (t < 1) return change/2*t*t + start;
-    t--;
-    return -change/2 * (t*(t-2) - 1) + start;
-}
-float easeInOutSine(float t, float start, float change, float duration) {
-    return -change/2 * (cos(PI*t/duration) - 1) + start;
-}
-
 // Setting this too low will cause skips in the current version of rider.
 #define EASING_DURATION 48
 #define EASING_SLEEP 32
@@ -666,23 +662,6 @@ bool drawAnimeStarburst(int x, int y, int n, int i, byte v) {
     return true;
 }
 
-#define STARBURST_SPOKE_LENGTH 3
-int counter;
-void testStarbursts() {
-    if (!patternInit) {
-        switchDrawType(0, 1);
-        patternInit = true;
-        counter = 0;
-    }
-
-    fillPWMFrame(0, EMPTY_PIXEL);
-    drawAnimeStarburst(3, 3, STARBURST_SPOKE_LENGTH, counter, SOLID_PIXEL);
-    drawAnimeStarburst(20, 3, STARBURST_SPOKE_LENGTH, counter, SOLID_PIXEL);
-    writePWMFrame(0, 0);
-    counter = (counter + 1) % (STARBURST_SPOKE_LENGTH * 2);
-    delay(50);
-}
-
 enum AnimeShadeStates {
     BEFORE_FLASH,
     GENERATE_FLASH,
@@ -727,7 +706,7 @@ void animeShades() {
     else if (animeState == GENERATE_FLASH) {
         animeFlashByte = (~(255 << min(animeFlashStep, ANIME_FLASH_WIDTH))) << max(0, animeFlashStep - ANIME_FLASH_WIDTH);
         if (animeFlashByte != 0) {
-            hScrollPWM(0, true, false);
+            hScrollPWM(0, true);
             expandByte(0, animeFlashByte, true, 0);
             writePWMFrame(0, 0);
             animeFlashStep++;
@@ -740,7 +719,7 @@ void animeShades() {
     else if (animeState == RIDE_FLASH) {
         // We should just need to scroll the pixels NUM_LED_COLS times.
         if (animeFrameCounter < NUM_LED_COLS) {
-            hScrollPWM(0, true, false);
+            hScrollPWM(0, true);
             expandByte(0, 0, false, 0);
             writePWMFrame(0, 0);
             animeFrameCounter++;
@@ -757,7 +736,7 @@ void animeShades() {
     else if (animeState == GRADIENT_FILL) {
         // At this point, all LEDs should *still* be off.
         if (GlassesPWM[0][NUM_LED_ROWS - 1][0] < SOLID_PIXEL) {
-            vScrollPWM(0, true, false);
+            vScrollPWM(0, true);
 
             for (int x = 0; x < NUM_LED_COLS; x++) {
                 GlassesPWM[x][0][0] = min(SOLID_PIXEL, GlassesPWM[x][0][0] + ANIME_GRADIENT_INCR);
@@ -803,4 +782,111 @@ void animeShades() {
             animeState = BEFORE_FLASH;
         }
     }
+}
+
+#define VGF_GRADIENT_INCR 16
+#define VGF_ON_FILL_MS_DELAY 250
+#define VGF_GRADIENT_MS_DELAY 10
+byte vgfCurrGradLevel;
+bool vgfIntensifying;
+void vGradientFill(bool increasing) {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        vgfCurrGradLevel = 0;
+        vgfIntensifying = true;
+    }
+
+    if (vgfIntensifying) {
+        vgfCurrGradLevel = min(vgfCurrGradLevel + VGF_GRADIENT_INCR, SOLID_PIXEL);
+    }
+    else {
+        vgfCurrGradLevel = max(vgfCurrGradLevel - VGF_GRADIENT_INCR, EMPTY_PIXEL);
+    }
+
+    for (int i = 0; i < NUM_LED_COLS; i++) {
+        GlassesPWM[i][increasing ? 0 : NUM_LED_ROWS - 1][0] = vgfCurrGradLevel;
+    }
+    vScrollPWM(0, increasing);
+
+    writePWMFrame(0, 0);
+    delay(VGF_GRADIENT_MS_DELAY);
+
+    if (vgfCurrGradLevel == SOLID_PIXEL || vgfCurrGradLevel == EMPTY_PIXEL) {
+        vgfIntensifying = !vgfIntensifying;
+    }
+}
+
+// o + o o + o o + o o + o o + o o + o o + o o + o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o + o o + o o + o o + o o + o o + o o + o o + o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o + o o + o o + o o + o o + o o + o o + o o + o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+// o o o o o o o o o o o o o o o o o o o o o o o o
+#define LATTICE_OFFSET_X 1
+#define LATTICE_OFFSET_Y 0
+#define LATTICE_SPACING 2
+void lattice() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+    }
+}
+
+#define OSC_CHECKERS_SIZE 2
+#define OSC_CHECKERS_MS_DURATION 500
+#define OSC_CHECKERS_OFFSET_X 1
+#define OSC_CHECKERS_OFFSET_Y 1
+#define OSC_CHECKERS_HOLD_DELAY_MS 250
+byte oscCheckersAByte;
+bool oscCheckersFadeDir;
+void oscCheckers() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        resetTimer();
+        oscCheckersAByte = EMPTY_PIXEL;
+        oscCheckersFadeDir = true;
+    }
+
+    if (oscCheckersFadeDir)
+        oscCheckersAByte = (byte)round(easeInOutSine(elapsed(), EMPTY_PIXEL, SOLID_PIXEL, OSC_CHECKERS_MS_DURATION));
+    else
+        oscCheckersAByte = (byte)round(easeInOutSine(elapsed(), SOLID_PIXEL, -SOLID_PIXEL, OSC_CHECKERS_MS_DURATION));
+
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        for (int y = 0; y < NUM_LED_ROWS; y++) {
+            if ((((x + OSC_CHECKERS_OFFSET_X) / OSC_CHECKERS_SIZE) % 2 == 0)
+              ^ (((y + OSC_CHECKERS_OFFSET_Y) / OSC_CHECKERS_SIZE) % 2 == 0)) {
+                GlassesPWM[x][y][0] = oscCheckersAByte;
+            }
+            else {
+                GlassesPWM[x][y][0] = SOLID_PIXEL - oscCheckersAByte;
+            }
+        }
+    }
+
+    writePWMFrame(0, 0);
+
+    if (elapsed() >= OSC_CHECKERS_MS_DURATION) {
+        oscCheckersFadeDir = !oscCheckersFadeDir;
+        delay(OSC_CHECKERS_HOLD_DELAY_MS);
+        resetTimer();
+    }
+
+    // easeInOutSine(float t, float start, float change, float duration)
+}
+
+void googlyEyes() {
 }

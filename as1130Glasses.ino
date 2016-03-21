@@ -117,7 +117,7 @@ void loop() {
             animeShades();
             break;
         case 1:
-            ripple();
+            oscCheckers();
             break;
         case 2:
             fire();
@@ -135,7 +135,7 @@ void loop() {
             slantBars();
             break;
         case 7:
-            sideRain(true);
+            hRain(true);
             break;
         case 8:
             rider();
@@ -144,7 +144,7 @@ void loop() {
             scrollMessage(2);
             break;
         case 10:
-            rain(true);
+            vRain(true);
             break;
         case 11:
             plasma();

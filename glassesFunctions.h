@@ -288,7 +288,8 @@ void fillScrollBufferV(byte val) {
     }
 }
 
-void hScrollPWM(byte frame, bool increasing, bool useBuffer) {
+// void hScrollPWM(byte frame, bool increasing, bool useBuffer) {
+void hScrollPWM(byte frame, bool increasing) {
     int i, j;
     for (i = 1; i < NUM_LED_COLS; i++) {
         for (j = 0; j < NUM_LED_ROWS; j++) {
@@ -299,15 +300,16 @@ void hScrollPWM(byte frame, bool increasing, bool useBuffer) {
         }
     }
 
-    if (useBuffer) {
-        for (int f = 0; f < NUM_LED_ROWS; f++) {
-            if (increasing) GlassesPWM[0][f][frame] = ScrollBufferH[f];
-            else GlassesPWM[NUM_LED_COLS - 1][f][frame] = ScrollBufferH[f];
-        }
-    }
+    // if (useBuffer) {
+    //     for (int f = 0; f < NUM_LED_ROWS; f++) {
+    //         if (increasing) GlassesPWM[0][f][frame] = ScrollBufferH[f];
+    //         else GlassesPWM[NUM_LED_COLS - 1][f][frame] = ScrollBufferH[f];
+    //     }
+    // }
 }
 
-void vScrollPWM(byte frame, bool increasing, bool useBuffer) {
+// void vScrollPWM(byte frame, bool increasing, bool useBuffer) {
+void vScrollPWM(byte frame, bool increasing) {
     int i, j;
     for (i = 0; i < NUM_LED_COLS; i++) {
         for (j = 1; j < NUM_LED_ROWS; j++) {
@@ -318,12 +320,12 @@ void vScrollPWM(byte frame, bool increasing, bool useBuffer) {
         }
     }
 
-    if (useBuffer) {
-        for (int f = 0; f < NUM_LED_COLS; f++) {
-            if (increasing) GlassesPWM[f][0][frame] = ScrollBufferV[f];
-            else GlassesPWM[f][NUM_LED_ROWS - 1][frame] = ScrollBufferV[f];
-        }
-    }
+    // if (useBuffer) {
+    //     for (int f = 0; f < NUM_LED_COLS; f++) {
+    //         if (increasing) GlassesPWM[f][0][frame] = ScrollBufferV[f];
+    //         else GlassesPWM[f][NUM_LED_ROWS - 1][frame] = ScrollBufferV[f];
+    //     }
+    // }
 }
 
 // Copy contents of bit array one LED over
@@ -662,4 +664,26 @@ void wuLineOld(int X0, int Y0, int X1, int Y1) {
         GlassesPWM[X0][Y0 + 1][0] = getCIE(255 - (Weighting ^ WeightingComplementMask));
     }
     GlassesPWM[X1][Y1][0] = 255;
+}
+
+#define PI 3.14159
+// Adapted from http://gizma.com/easing/
+float easeInOutQuad(float t, float start, float change, float duration) {
+    t /= duration/2;
+    if (t < 1) return change/2*t*t + start;
+    t--;
+    return -change/2 * (t*(t-2) - 1) + start;
+}
+
+float easeInOutSine(float t, float start, float change, float duration) {
+    return -change/2 * (cos(PI*t/duration) - 1) + start;
+}
+
+unsigned long timerMs;
+void resetTimer() {
+    timerMs = millis();
+}
+
+unsigned long elapsed() {
+    return millis() - timerMs;
 }
