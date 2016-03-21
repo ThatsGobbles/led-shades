@@ -263,11 +263,9 @@ void addAllPWM(float q, byte frame) {
 }
 
 void expandByte(byte col, byte value, bool reverse, byte frame) {
-    int index;
     for (byte i = 0; i < NUM_LED_ROWS; i++) {
-        if (reverse) index = NUM_LED_ROWS - i - 1;
-        else index = i;
-        GlassesPWM[col][index][frame] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
+        if (reverse) GlassesPWM[col][NUM_LED_ROWS - i - 1][frame] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
+        else GlassesPWM[col][i][frame] = value & 0b10000000 ? SOLID_PIXEL : EMPTY_PIXEL;
         value <<= 1;
     }
 }
@@ -346,7 +344,7 @@ void scrollBits(byte dir, byte bitbuffer) {
 // Fetch font character bitmap from flash
 byte charBuffer[8] = {0};
 void loadCharBuffer(byte character) {
-    for (int i = 0; i< 8; i++) {
+    for (int i = 0; i < 8; i++) {
         charBuffer[i] = pgm_read_byte(Font[character]+i);
     }
 }

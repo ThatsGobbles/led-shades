@@ -63,78 +63,34 @@ void initMessage(byte message) {
 }
 
 // Draw message scrolling across the two arrays.
-// SCROLL1X is normal scrolling.
-// SCROLL2X is page-flipping scroll that simulates double horizontal resolution using persistence of vision.
-#define SCROLL1X 0
-#define SCROLL2X 1
-void scrollMessage(byte message, byte mode) {
-    if (!patternInit) {
-        switchDrawType(0, 0);
-        initMessage(message);
-        patternInit = true;
-    }
-
-    if ((currentCharColumn % 2 == 0) || mode != SCROLL2X) scrollBits(1, 0);
-    else scrollBits(1, 1);
-
-    if ((currentCharColumn % 2 == 1) || mode != SCROLL2X) {
-        GlassesBits[23][0] = charBuffer[currentCharColumn];
-        writeBitFrame(0, 0);
-    }
-    else {
-        GlassesBits[23][1] = charBuffer[currentCharColumn];
-        writeBitFrame(0,1);
-    }
-
-    currentCharColumn++;
-    if (currentCharColumn > 7) {
-        currentCharColumn = 0;
-        currentMessageChar++;
-        char nextChar = loadStringChar(message, currentMessageChar);
-        if (nextChar == 0) {
-            currentMessageChar = 0;
-            nextChar = loadStringChar(message, currentMessageChar);
-        }
-        loadCharBuffer(nextChar);
-    }
-
-    if (mode != SCROLL2X) delay(30);
-    else delay(10);
-}
-
-void scrollMessage2x(byte messageId) {
+void scrollMessage(byte messageId) {
     if (!patternInit) {
         switchDrawType(0, 1);
         initMessage(messageId);
         patternInit = true;
     }
 
-    // if ((currentCharColumn % 2 == 0) || mode != SCROLL2X) scrollBits(1, 0);
-    // else scrollBits(1, 1);
+    // Even, scroll 0 buffer
+    // Odd, scroll 1 buffer
+    // if (currentCharColumn % 2 == 0) hScrollPWM(0, false, false);
+    // else hScrollPWM(1, false, false);
+    hScrollPWM(currentCharColumn % NUM_LED_BUFS, false, false);
 
-    if (currentCharColumn % 2 == 0) hScrollPWM(0, false, false);
-    else hScrollPWM(1, false, false);
-
-    // if ((currentCharColumn % 2 == 1) || mode != SCROLL2X) {
-    //     GlassesBits[23][0] = charBuffer[currentCharColumn];
-    //     writeBitFrame(0, 0);
+    // Even, write next column to 1 buffer and display it
+    // Odd, write next column to 0 buffer and display it
+    // if (currentCharColumn % 2 == 1) {
+    //     expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, 0);
+    //     writePWMFrame(0, 0);
     // }
     // else {
-    //     GlassesBits[23][1] = charBuffer[currentCharColumn];
-    //     writeBitFrame(0,1);
+    //     expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, 1);
+    //     writePWMFrame(0, 1);
     // }
-
-    if (currentCharColumn % 2 == 1) {
-        expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, 0);
-        writePWMFrame(0, 0);
-    }
-    else {
-        expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, 1);
-        writePWMFrame(0, 1);
-    }
+    expandByte(NUM_LED_COLS - 1, charBuffer[currentCharColumn], true, (currentCharColumn + 1) % NUM_LED_BUFS);
+    writePWMFrame(0, (currentCharColumn + 1) % NUM_LED_BUFS);
 
     currentCharColumn++;
-    if (currentCharColumn >= 8) {
+    if (currentCharColumn >= NUM_COLS_PER_CHAR) {
         currentCharColumn = 0;
         currentMessageChar++;
         char nextChar = loadStringChar(messageId, currentMessageChar);
@@ -145,7 +101,7 @@ void scrollMessage2x(byte messageId) {
         loadCharBuffer(nextChar);
     }
 
-    delay(5);
+    delay(3);
 }
 
 #define MAX_RAIN_ACTION 20
