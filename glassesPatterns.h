@@ -890,3 +890,29 @@ void oscCheckers() {
 
 void googlyEyes() {
 }
+
+#define TSB_MS_DURATION 1000
+#define TSB_SIZE 4
+float tsbXpos;
+void testShiftBoxes() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        resetTimer();
+    }
+
+    fillPWMFrame(0, EMPTY_PIXEL);
+    if (elapsed() < TSB_MS_DURATION)
+        tsbXpos = easeInOutSine(elapsed(), 0.5, NUM_LED_COLS - TSB_SIZE - 1, TSB_MS_DURATION);
+    else
+        resetTimer();
+
+    wuRectangle(tsbXpos, 0.5, tsbXpos + TSB_SIZE, 0.5 + TSB_SIZE);
+    writePWMFrame(0, 0);
+}
+
+#define SHIFT_BOXES_BOX_SIZE 4
+#define SHIFT_BOXES_OFFSET_X 0
+#define SHIFT_BOXES_OFFSET_Y 0
+void shiftBoxes() {
+}

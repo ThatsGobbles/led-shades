@@ -574,6 +574,73 @@ void wuLine(float x0, float y0, float x1, float y1) {
     }
 }
 
+// TODO: Take care of case when either dimension is < 1 pixel.
+void wuRectangle(float x0, float y0, float x1, float y1) {
+    int i, j;
+    float temp;
+
+    if (x0 == x1 || y0 == y1) return;
+    if (x0 > x1) temp = x0; x0 = x1; x1 = temp;
+    if (y0 > y1) temp = y0; y0 = y1; y1 = temp;
+
+    float rf_x0, rf_y0;
+    float nf_x1, nf_y1;
+
+    int int_x0, int_y0, int_x1, int_y1;
+
+    rf_x0 = rfpart(x0);
+    rf_y0 = rfpart(y0);
+
+    nf_x1 = fpart(x1);
+    nf_y1 = fpart(y1);
+
+    int_x0 = (int)floor(x0);
+    int_y0 = (int)floor(y0);
+    int_x1 = (int)floor(x1);
+    int_y1 = (int)floor(y1);
+
+    // Three cases: interior solid pixels, edge segment pixels, and corner pixels.
+
+    // Corner pixel weights
+    float tl_wt, tr_wt, bl_wt, br_wt;
+
+    tl_wt = rf_x0 * rf_y0;
+    tr_wt = nf_x1 * rf_y0;
+    bl_wt = rf_x0 * nf_y1;
+    br_wt = nf_x1 * nf_y1;
+
+    // Edge segment pixel weights
+    float sl_wt, st_wt, sr_wt, sb_wt;
+
+    sl_wt = rf_x0;
+    st_wt = rf_y0;
+    sr_wt = nf_x1;
+    sb_wt = nf_y1;
+
+    // Plot corner pixels
+    smartPlotf(int_x0, int_y0, tl_wt);
+    smartPlotf(int_x0, int_y1, bl_wt);
+    smartPlotf(int_x1, int_y0, tr_wt);
+    smartPlotf(int_x1, int_y1, br_wt);
+
+    // Plot edge segment pixels
+    for(i = int_x0 + 1; i <= int_x1 - 1; i++) {
+        smartPlotf(i, int_y0, st_wt);
+        smartPlotf(i, int_y1, sb_wt);
+    }
+    for(j = int_y0 + 1; j <= int_y1 - 1; j++) {
+        smartPlotf(int_x0, j, sl_wt);
+        smartPlotf(int_x1, j, sr_wt);
+    }
+
+    // Plot interior pixels
+    for(i = int_x0 + 1; i <= int_x1 - 1; i++) {
+        for(j = int_y0 + 1; j <= int_y1 - 1; j++) {
+            smartPlot(i, j, SOLID_PIXEL);
+        }
+    }
+}
+
 // Anti-aliased line algorithm
 // Adapted from Michael Abrash http://www.phatcode.net/res/224/files/html/ch42/42-02.html
 void wuLineOld(int X0, int Y0, int X1, int Y1) {
