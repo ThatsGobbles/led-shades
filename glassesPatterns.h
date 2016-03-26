@@ -914,5 +914,6 @@ void testShiftBoxes() {
 #define SHIFT_BOXES_BOX_SIZE 4
 #define SHIFT_BOXES_OFFSET_X 0
 #define SHIFT_BOXES_OFFSET_Y 0
+#define SHIFT_BOXES_PHASE_DURATION_MS 1000
 void shiftBoxes() {
 }

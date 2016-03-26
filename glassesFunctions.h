@@ -580,8 +580,12 @@ void wuRectangle(float x0, float y0, float x1, float y1) {
     float temp;
 
     if (x0 == x1 || y0 == y1) return;
-    if (x0 > x1) temp = x0; x0 = x1; x1 = temp;
-    if (y0 > y1) temp = y0; y0 = y1; y1 = temp;
+    if (x0 > x1) {
+        temp = x0; x0 = x1; x1 = temp;
+    }
+    if (y0 > y1) {
+        temp = y0; y0 = y1; y1 = temp;
+    }
 
     float rf_x0, rf_y0;
     float nf_x1, nf_y1;

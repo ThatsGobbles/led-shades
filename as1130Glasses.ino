@@ -114,7 +114,8 @@ void loop() {
 
     switch(currentPattern) {
         case 0:
-            animeShades();
+            //animeShades();
+            testShiftBoxes();
             break;
         case 1:
             oscCheckers();
