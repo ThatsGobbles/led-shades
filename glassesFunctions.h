@@ -3,6 +3,14 @@
 #define SOLID_PIXEL 255
 #define EMPTY_PIXEL 0
 
+enum OverlayMode {
+    NORMAL,
+    LEAST,
+    MOST,
+};
+
+OverlayMode bufferMode = NORMAL;
+
 // Read and smooth light sensor input
 #define BRIGHTNESS_SMOOTH_FACTOR 0.99
 float smoothedBrightness = 0;

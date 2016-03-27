@@ -911,9 +911,65 @@ void testShiftBoxes() {
     writePWMFrame(0, 0);
 }
 
-#define SHIFT_BOXES_BOX_SIZE 4
+#define SHIFT_BOXES_SIZE 4
 #define SHIFT_BOXES_OFFSET_X 0
 #define SHIFT_BOXES_OFFSET_Y 0
 #define SHIFT_BOXES_PHASE_DURATION_MS 1000
+#define SHIFT_BOXES_DELAY_DURATION_MS 500
+#define SHIFT_BOXES_DIR_SIGN 1
+float sbLeastX, sbLeastY;
+unsigned long sbElapsed;
+byte sbDir;
 void shiftBoxes() {
+    if (!patternInit) {
+        switchDrawType(0, 1);
+        patternInit = true;
+        sbLeastX = 0;
+        sbLeastY = 0;
+        sbElapsed = 0;
+        resetTimer();
+    }
+
+    fillPWMFrame(0, EMPTY_PIXEL);
+
+    // Keep persistent for this call.
+    sbElapsed = elapsed();
+
+    if (sbElapsed <= SHIFT_BOXES_PHASE_DURATION_MS) {
+        // Right
+        if (sbDir == 0) {
+            sbLeastX = (-2 * SHIFT_BOXES_SIZE) + easeInOutSine(sbElapsed, 0, 2 * SHIFT_BOXES_SIZE, SHIFT_BOXES_PHASE_DURATION_MS);
+            sbLeastY = 0;
+        }
+        // Down
+        else if (sbDir == 1) {
+            sbLeastX = 0;
+            sbLeastY = (-2 * SHIFT_BOXES_SIZE) + easeInOutSine(sbElapsed, 0, 2 * SHIFT_BOXES_SIZE, SHIFT_BOXES_PHASE_DURATION_MS);
+        }
+        // Left
+        else if (sbDir == 2) {
+            sbLeastX = -easeInOutSine(sbElapsed, 0, 2 * SHIFT_BOXES_SIZE, SHIFT_BOXES_PHASE_DURATION_MS);
+            sbLeastY = 0;
+        }
+        // Up
+        else if (sbDir == 3) {
+            sbLeastX = 0;
+            sbLeastY = -easeInOutSine(sbElapsed, 0, 2 * SHIFT_BOXES_SIZE, SHIFT_BOXES_PHASE_DURATION_MS);
+        }
+
+        for (int x = 0; x <= ceil(NUM_LED_COLS * 1.0 / SHIFT_BOXES_SIZE) + 2; x++) {
+            for (int y = 0; y <= ceil(NUM_LED_ROWS * 1.0 / SHIFT_BOXES_SIZE) + 2; y++) {
+                if (x % 2 == 0 ^ y % 2 == 0) {
+                    wuRectangle(sbLeastX + x * SHIFT_BOXES_SIZE, sbLeastY + y * SHIFT_BOXES_SIZE, sbLeastX + (x + 1) * SHIFT_BOXES_SIZE, sbLeastY + (y + 1) * SHIFT_BOXES_SIZE);
+                }
+            }
+        }
+
+        writePWMFrame(0, 0);
+    }
+    else {
+        delay(SHIFT_BOXES_DELAY_DURATION_MS);
+        sbDir = (sbDir + 1) % 4;
+        resetTimer();
+    }
 }
