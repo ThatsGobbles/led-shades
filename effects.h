@@ -6,9 +6,9 @@ float sinesIncRval;
 float sinesIncr;
 bool sinesIncreasing;
 void sines() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         sinesIncRval = 0;
         sinesIncr = 0.3;
         sinesIncreasing = true;
@@ -33,9 +33,9 @@ void sines() {
 // Draw a circular sine plasma.
 int plasOffset;
 void plasma() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         plasOffset = 0;
     }
 
@@ -64,10 +64,10 @@ void initMessage(byte message) {
 
 // Draw message scrolling across the two arrays.
 void scrollMessage(byte messageId) {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
         initMessage(messageId);
-        patternInit = true;
+        effectInit = true;
     }
 
     // Even, scroll 0 buffer
@@ -110,9 +110,9 @@ void scrollMessage(byte messageId) {
 #define V_RAIN_MS_DELAY 20
 int rainAction;
 void hRain(bool increasing) {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     // fillScrollBufferH(0);
@@ -134,9 +134,9 @@ void hRain(bool increasing) {
 }
 
 void vRain(boolean increasing) {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     // fillScrollBufferV(0);
@@ -171,9 +171,9 @@ typedef struct Stars {
 Stars stars[NUM_STARS];
 
 void starField() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     mulAllPWM(FADE_FACTOR_SLOW, 0);
@@ -206,9 +206,9 @@ void starField() {
 byte blinkAction = 0;
 #define BLINK_COUNT 50
 void fullOn() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     if (blinkAction++ > BLINK_COUNT) {
@@ -237,9 +237,9 @@ int slantPos = 23;
 byte slantAction = 0;
 #define SLANT_COUNT 3
 void slantBars() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     if (slantAction++ > SLANT_COUNT) {
@@ -260,9 +260,9 @@ void slantBars() {
 
 #define SPARKLE_COUNT 5
 void sparkles() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     mulAllPWM(FADE_FACTOR_SLOW, 0);
@@ -272,9 +272,9 @@ void sparkles() {
 
 // Simply grab a character from the font and put it in the 8x8 section of both sides of the glasses.
 void displayChar(int character) {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     loadCharBuffer(character);
@@ -292,9 +292,9 @@ int emotecounter = 0;
 byte currentEmote = 0;
 #define EMOTE_DELAY 10
 void emote() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         currentEmote = 0;
     }
 
@@ -392,9 +392,9 @@ byte fireLookup(byte x, byte y) {
 }
 
 void fire() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     if (fireAction++ > MAX_FIRE_ACTION) {
@@ -429,26 +429,23 @@ void loadGraphicsFrame(int frame) {
 }
 
 // Awww!
+#define BH_FRAME_DELAY_MS 50
 byte currentHeartFrame = 0;
-byte heartLoopCount = 0;
 void beatingHearts() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
-    heartLoopCount++;
-    if (heartLoopCount > 50) {
-        heartLoopCount = 0;
+    if (currentHeartFrame < 3) loadGraphicsFrame(currentHeartFrame);
+    else loadGraphicsFrame(5 - currentHeartFrame);
 
-        if (currentHeartFrame < 3) loadGraphicsFrame(currentHeartFrame);
-        else loadGraphicsFrame(5 - currentHeartFrame);
+    currentHeartFrame++;
+    if (currentHeartFrame > 5) currentHeartFrame = 0;
 
-        currentHeartFrame++;
-        if (currentHeartFrame > 5) currentHeartFrame = 0;
+    writePWMFrame(0, 0);
 
-        writePWMFrame(0, 0);
-    }
+    delay(BH_FRAME_DELAY_MS);
 }
 
 byte eqLevels[12] = {0};
@@ -459,9 +456,9 @@ int eqRandomizerCap = 0;
 #define EQ_MIN_INTERVAL 100
 #define EQ_MAX_INTERVAL 400
 void fakeEQ() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         eqRandomizerCap = random(0, EQ_MAX_INTERVAL - EQ_MIN_INTERVAL) + EQ_MIN_INTERVAL;
     }
 
@@ -493,6 +490,8 @@ void fakeEQ() {
         }
         writePWMFrame(0, 0);
     }
+
+    delay(10);
 }
 
 // Setting this too low will cause skips in the current version of rider.
@@ -503,9 +502,9 @@ int sleepCooldown;
 int dirRider;
 float pRider;
 void rider() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         tRider = 0;
         dirRider = 1;
         sleepCooldown = 0;
@@ -586,9 +585,9 @@ typedef struct Ripple {
 Ripple ripples[MAX_NUM_RIPPLES];
 
 void ripple() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 
     mulAllPWM(FADE_FACTOR_SLOW, 0);
@@ -623,9 +622,9 @@ typedef struct Firework {
 };
 
 void fireworks() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 }
 
@@ -692,13 +691,14 @@ const byte animeStarburstXPoses[ANIME_MAX_NUM_STARBURSTS] = {15, 18, 21};
 const byte animeStarburstYPoses[ANIME_MAX_NUM_STARBURSTS] = {3, 2, 4};
 bool animeStarburstActivity;
 void animeShades() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         animeState = BEFORE_FLASH;
     }
 
     if (animeState == BEFORE_FLASH) {
+        fillPWMFrame(0, EMPTY_PIXEL);
         delay(ANIME_BEFORE_FLASH_MS_DELAY);
         animeState = GENERATE_FLASH;
         animeFlashStep = 1;
@@ -790,9 +790,9 @@ void animeShades() {
 byte vgfCurrGradLevel;
 bool vgfIntensifying;
 void vGradientFill(bool increasing) {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         vgfCurrGradLevel = 0;
         vgfIntensifying = true;
     }
@@ -838,9 +838,9 @@ void vGradientFill(bool increasing) {
 #define LATTICE_OFFSET_Y 0
 #define LATTICE_SPACING 2
 void lattice() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
     }
 }
 
@@ -852,9 +852,9 @@ void lattice() {
 byte oscCheckersAByte;
 bool oscCheckersFadeDir;
 void oscCheckers() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         resetTimer();
         oscCheckersAByte = EMPTY_PIXEL;
         oscCheckersFadeDir = true;
@@ -895,9 +895,9 @@ void googlyEyes() {
 #define TSB_SIZE 4
 float tsbXpos;
 void testShiftBoxes() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         resetTimer();
     }
 
@@ -921,9 +921,9 @@ float sbLeastX, sbLeastY;
 unsigned long sbElapsed;
 byte sbDir;
 void shiftBoxes() {
-    if (!patternInit) {
+    if (!effectInit) {
         switchDrawType(0, 1);
-        patternInit = true;
+        effectInit = true;
         sbLeastX = 0;
         sbLeastY = 0;
         sbElapsed = 0;
@@ -972,4 +972,18 @@ void shiftBoxes() {
         sbDir = (sbDir + 1) % 4;
         resetTimer();
     }
+}
+
+void fillAudioPWM() {
+    if (!effectInit) {
+        switchDrawType(0, 1);
+        effectInit = true;
+    }
+
+    int tempSpec = ((spectrumDecay[0] + spectrumValue[1] + spectrumValue[2]) / 3.0) / 2;
+    if (tempSpec > 255) tempSpec = 255;
+
+    fillPWMFrame(0, getCIE(tempSpec));
+    writePWMFrame(0, 0);
+    delay(1);
 }

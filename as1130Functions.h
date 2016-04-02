@@ -67,7 +67,7 @@ void setMovieLooping(byte address, byte loops) {
 // Set brightness level for device
 void setBrightness(byte address, byte brightness) {
     selectControlMemory(address);
-    writeRegister(address,CONTROL_CURRENT_SOURCE, brightness);
+    writeRegister(address, CONTROL_CURRENT_SOURCE, brightness);
 }
 
 // Set configuration options

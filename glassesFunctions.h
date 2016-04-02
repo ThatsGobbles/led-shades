@@ -1,5 +1,8 @@
 // Glasses-specific functions, may not work with other applications
 
+typedef void (*functionList)(); // definition for list of effect function pointers
+extern const byte numEffects;
+
 #define SOLID_PIXEL 255
 #define EMPTY_PIXEL 0
 
