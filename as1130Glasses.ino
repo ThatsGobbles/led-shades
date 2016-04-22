@@ -84,6 +84,10 @@ void setup() {
 }
 
 functionList effectList[] = {
+    audioRain,
+    bigVU,
+    audioHearts,
+    fillAudioPWM,
     beatingHearts,
     animeShades,
     shiftBoxes,
@@ -91,7 +95,6 @@ functionList effectList[] = {
     fire,
     emote,
     starField,
-    fillAudioPWM,
     slantBars,
     rider,
     plasma,
@@ -106,17 +109,17 @@ void loop() {
     doButtons();
 
     if (currentMillis - audioMillis > AUDIO_DELAY) {
-        audioMillis = currentMillis;  
+        audioMillis = currentMillis;
         doAnalogs();
     }
 
     // switch to a new effect every cycleTime milliseconds
     if (currentMillis - cycleMillis > AUTO_CYCLE_DELAY_MS && autoCycle == true) {
-        cycleMillis = currentMillis; 
+        cycleMillis = currentMillis;
         if (++currentEffect >= numEffects) currentEffect = 0; // loop to start of effect list
         effectInit = false; // trigger effect initialization when new effect is selected
     }
-    
+
     // // run the currently selected effect every effectDelay milliseconds
     // if (currentMillis - effectMillis > effectDelay) {
     //     effectMillis = currentMillis;

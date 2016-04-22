@@ -422,12 +422,6 @@ void fire() {
     }
 }
 
-void loadGraphicsFrame(int frame) {
-    for (int x = 0; x < NUM_LED_COLS; x++) {
-        expandByte(x, pgm_read_byte(BeatingHeartFrames[frame]+x), true, 0);
-    }
-}
-
 // Awww!
 #define BH_FRAME_DELAY_MS 50
 byte currentHeartFrame = 0;
@@ -681,7 +675,6 @@ enum AnimeShadeStates {
 #define ANIME_STARBURST_OFFSET_DELAY 4
 #define ANIME_STARBURST_MS_DELAY 35
 #define ANIME_FADE_OUT_MS_DELAY 10
-#define DEG_TO_RAD 0.0174533
 AnimeShadeStates animeState;
 int animeFlashStep;
 byte animeFlashByte;
@@ -817,33 +810,6 @@ void vGradientFill(bool increasing) {
     }
 }
 
-// o + o o + o o + o o + o o + o o + o o + o o + o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o + o o + o o + o o + o o + o o + o o + o o + o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o + o o + o o + o o + o o + o o + o o + o o + o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-// o o o o o o o o o o o o o o o o o o o o o o o o
-#define LATTICE_OFFSET_X 1
-#define LATTICE_OFFSET_Y 0
-#define LATTICE_SPACING 2
-void lattice() {
-    if (!effectInit) {
-        switchDrawType(0, 1);
-        effectInit = true;
-    }
-}
-
 #define OSC_CHECKERS_SIZE 2
 #define OSC_CHECKERS_MS_DURATION 500
 #define OSC_CHECKERS_OFFSET_X 1
@@ -884,31 +850,9 @@ void oscCheckers() {
         delay(OSC_CHECKERS_HOLD_DELAY_MS);
         resetTimer();
     }
-
-    // easeInOutSine(float t, float start, float change, float duration)
 }
 
 void googlyEyes() {
-}
-
-#define TSB_MS_DURATION 1000
-#define TSB_SIZE 4
-float tsbXpos;
-void testShiftBoxes() {
-    if (!effectInit) {
-        switchDrawType(0, 1);
-        effectInit = true;
-        resetTimer();
-    }
-
-    fillPWMFrame(0, EMPTY_PIXEL);
-    if (elapsed() < TSB_MS_DURATION)
-        tsbXpos = easeInOutSine(elapsed(), 0.5, NUM_LED_COLS - TSB_SIZE - 1, TSB_MS_DURATION);
-    else
-        resetTimer();
-
-    wuRectangle(tsbXpos, 0.5, tsbXpos + TSB_SIZE, 0.5 + TSB_SIZE);
-    writePWMFrame(0, 0);
 }
 
 #define SHIFT_BOXES_SIZE 4
@@ -936,6 +880,8 @@ void shiftBoxes() {
     sbElapsed = elapsed();
 
     if (sbElapsed <= SHIFT_BOXES_PHASE_DURATION_MS) {
+        bufferMode = MOST;
+
         // Right
         if (sbDir == 0) {
             sbLeastX = (-2 * SHIFT_BOXES_SIZE) + easeInOutSine(sbElapsed, 0, 2 * SHIFT_BOXES_SIZE, SHIFT_BOXES_PHASE_DURATION_MS);
@@ -965,6 +911,8 @@ void shiftBoxes() {
             }
         }
 
+        bufferMode = NORMAL;
+
         writePWMFrame(0, 0);
     }
     else {
@@ -984,6 +932,57 @@ void fillAudioPWM() {
     if (tempSpec > 255) tempSpec = 255;
 
     fillPWMFrame(0, getCIE(tempSpec));
+    writePWMFrame(0, 0);
+    delay(1);
+}
+
+void audioRain() {
+    if (!effectInit) {
+        switchDrawType(0, 0);
+        effectInit = true;
+    }
+
+    byte tempRain = 0;
+
+    tempRain = ((spectrumDecay[1] + spectrumValue[2] + spectrumValue[3]) / 3.0) / 50;
+    if (tempRain > 7) tempRain = 7;
+
+    scrollBits(1, 0);
+    GlassesBits[23][0] =  0x03 << (7 - tempRain);
+
+    writeBitFrame(0, 0);
+    delay(15);
+}
+
+void bigVU() {
+    if (!effectInit) {
+        switchDrawType(0, 0);
+        effectInit = true;
+    }
+
+    int tempSpec = ((spectrumDecay[0] + spectrumValue[1] + spectrumValue[2]) / 3.0) / 50;
+    if (tempSpec > 7) tempSpec = 7;
+
+    for (byte i = 0; i < 24; i++) {
+        GlassesBits[i][0] = 0xFF << (7 - tempSpec);
+    }
+
+    writeBitFrame(0, 0);
+    delay(1);
+}
+
+void audioHearts() {
+    if (!effectInit) {
+        switchDrawType(0, 1);
+        effectInit = true;
+    }
+
+    int tempSpec = ((spectrumDecay[0] + spectrumDecay[1] + spectrumDecay[2] + spectrumValue[3]) / 4.0) / 100;
+    if (tempSpec > 3) tempSpec = 3;
+
+    if (tempSpec == 0) { fillPWMFrame(0, 0); }
+    else { loadGraphicsFrame(tempSpec - 1); }
+
     writePWMFrame(0, 0);
     delay(1);
 }

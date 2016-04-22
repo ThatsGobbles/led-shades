@@ -21,6 +21,10 @@ void readBrightness() {
     smoothedBrightness = smoothedBrightness * BRIGHTNESS_SMOOTH_FACTOR + analogRead(3) * (1.0 - BRIGHTNESS_SMOOTH_FACTOR);
 }
 
+byte fByte(float f) {
+    return constrain(f * SOLID_PIXEL, EMPTY_PIXEL, SOLID_PIXEL);
+}
+
 // Send contents of bit frame to correct AS1130 registers
 // Rough, needs to be streamlined
 void writeBitFrame(byte frame, byte bitbuffer) {
@@ -479,12 +483,17 @@ byte qsine(int angle) {
 void smartPlot(int x, int y, byte val) {
     if (x < 0 || x >= NUM_LED_COLS) return;
     if (y < 0 || y >= NUM_LED_ROWS) return;
-    GlassesPWM[x][y][0] = val;
+
+    if (bufferMode == NORMAL)
+        GlassesPWM[x][y][0] = val;
+    else if (bufferMode == LEAST && GlassesPWM[x][y][0] > val)
+        GlassesPWM[x][y][0] = val;
+    else if (bufferMode == MOST && GlassesPWM[x][y][0] < val)
+        GlassesPWM[x][y][0] = val;
 }
 
-// brightness := [0.0, 1.0]
 void smartPlotf(int x, int y, float brightness) {
-    smartPlot(x, y, (byte)round(SOLID_PIXEL * brightness));
+    smartPlot(x, y, fByte(brightness));
 }
 
 // integer part of x
@@ -656,98 +665,6 @@ void wuRectangle(float x0, float y0, float x1, float y1) {
     }
 }
 
-// Anti-aliased line algorithm
-// Adapted from Michael Abrash http://www.phatcode.net/res/224/files/html/ch42/42-02.html
-void wuLineOld(int X0, int Y0, int X1, int Y1) {
-    uint16_t IntensityShift, ErrorAdj, ErrorAcc;
-    uint16_t ErrorAccTemp, Weighting, WeightingComplementMask;
-    int DeltaX, DeltaY, Temp, XDir;
-
-    // make sure line runs from top to bottom
-    if (Y0 > Y1) {
-        Temp = Y0; Y0 = Y1; Y1 = Temp;
-        Temp = X0; X0 = X1; X1 = Temp;
-    }
-
-    // first pixel
-    GlassesPWM[X0][Y0][0] = 255;
-
-    if ((DeltaX = X1 - X0) >= 0) {
-        XDir = 1;
-    }
-    else {
-        XDir = -1;
-        DeltaX = -DeltaX;
-    }
-
-    if ((DeltaY = Y1 - Y0) == 0) {
-        // horizontal line
-        while (DeltaX-- != 0) {
-        X0 += XDir;
-        GlassesPWM[X0][Y0][0] = 255;
-        }
-        return;
-    }
-
-    if (DeltaX == 0) {
-        // vertical line
-        do {
-            Y0++;
-            GlassesPWM[X0][Y0][0] = 255;
-        }
-        while (--DeltaY != 0);
-        return;
-    }
-
-    if (DeltaX == DeltaY) {
-        // diagonal line
-        do {
-        X0 += XDir;
-        Y0++;
-        GlassesPWM[X0][Y0][0] = 255;
-        }
-        while (--DeltaY != 0);
-        return;
-    }
-
-    // need an anti-aliased line
-    ErrorAcc = 0;
-    IntensityShift = 16 - 8;
-    WeightingComplementMask = 256 - 1;
-
-    if (DeltaY > DeltaX) {
-        // y-major line
-        ErrorAdj = ((unsigned long) DeltaX << 16) / (unsigned long) DeltaY;
-        while (--DeltaY) {
-            ErrorAccTemp = ErrorAcc;
-            ErrorAcc += ErrorAdj;
-            if (ErrorAcc <= ErrorAccTemp) {
-                X0 += XDir;
-            }
-            Y0++;
-            Weighting = ErrorAcc >> IntensityShift;
-            GlassesPWM[X0][Y0][0] = getCIE(255 - Weighting);
-            GlassesPWM[X0][Y0 + 1][0] = getCIE(255 - (Weighting ^ WeightingComplementMask));
-        }
-        GlassesPWM[X1][Y1][0] = 255;
-        return;
-    }
-
-    ErrorAdj = ((unsigned long) DeltaY << 16) / (unsigned long) DeltaX;
-    while (--DeltaX) {
-        ErrorAccTemp = ErrorAcc;
-        ErrorAcc += ErrorAdj;
-        if (ErrorAcc <= ErrorAccTemp) {
-            Y0++;
-        }
-        X0 += XDir;
-        Weighting = ErrorAcc >> IntensityShift;
-        GlassesPWM[X0][Y0][0] = getCIE(255 - Weighting);
-        GlassesPWM[X0][Y0 + 1][0] = getCIE(255 - (Weighting ^ WeightingComplementMask));
-    }
-    GlassesPWM[X1][Y1][0] = 255;
-}
-
 #define PI 3.14159
 // Adapted from http://gizma.com/easing/
 float easeInOutQuad(float t, float start, float change, float duration) {
@@ -768,4 +685,10 @@ void resetTimer() {
 
 unsigned long elapsed() {
     return millis() - timerMs;
+}
+
+void loadGraphicsFrame(int frame) {
+    for (int x = 0; x < NUM_LED_COLS; x++) {
+        expandByte(x, pgm_read_byte(BeatingHeartFrames[frame]+x), true, 0);
+    }
 }
