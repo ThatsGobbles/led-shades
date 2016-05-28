@@ -84,6 +84,13 @@ void setup() {
 }
 
 functionList effectList[] = {
+    message0,
+    message1,
+    message2,
+    message3,
+    message4,
+    message5,
+    message6,
     audioRain,
     bigVU,
     audioHearts,

@@ -19,6 +19,46 @@
 
 #define NUM_FREQ_BINS 7
 
+// // Code for beat detection, integrate this!
+// int spectrumValue[7];
+// const int FRAME_WINDOW_LENGTH = 50;
+// int currFrame = 0;
+// int bass[FRAME_WINDOW_LENGTH];
+// int snare[FRAME_WINDOW_LENGTH];
+// int hat[FRAME_WINDOW_LENGTH];
+
+// ...
+
+// int find_average(int ary[], int siz){
+//   double sum = 0;
+//   for (int i = 0; i < siz; i++){
+//     sum += ary[i];
+//   }
+//   return sum/siz;
+// }
+
+// void loop(){
+//   readEq() //im not including this function here on the forums
+//   int new_bass = spectrumValue[0] + spectrumValue[1];
+//   int new_snare = spectrumValue[3];
+//   int new_hat = spectrumValue[6] + spectrumValue[5];
+
+//   if ((new_snare/find_average(snare, FRAME_WINDOW_LENGTH)) > 1){
+//     <stuff>
+//   }
+//   if ((new_hay/find_average(hat, FRAME_WINDOW_LENGTH)) > 1){
+//     <stuff>
+//   }
+//   if ((new_bass/find_average(bass, FRAME_WINDOW_LENGTH)) > 1){
+//     <stuff>
+//   }
+//   hat[currFrame] = new_hat;
+//   snare[currFrame] = new_snare;
+//   bass[currFrame] = new_bass;
+//   currFrame++;
+//   if (currFrame >= FRAME_WINDOW_LENGTH) currFrame=0;
+// }
+
 // Global variables
 int spectrumValue[NUM_FREQ_BINS];         // holds raw adc values
 float spectrumDecay[NUM_FREQ_BINS] = {0}; // holds time-averaged values

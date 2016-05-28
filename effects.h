@@ -104,6 +104,34 @@ void scrollMessage(byte messageId) {
     delay(3);
 }
 
+void message0() {
+    scrollMessage(0);
+}
+
+void message1() {
+    scrollMessage(1);
+}
+
+void message2() {
+    scrollMessage(2);
+}
+
+void message3() {
+    scrollMessage(3);
+}
+
+void message4() {
+    scrollMessage(4);
+}
+
+void message5() {
+    scrollMessage(5);
+}
+
+void message6() {
+    scrollMessage(6);
+}
+
 #define H_RAIN_MAX_NEW_DROPS 2
 #define V_RAIN_MAX_NEW_DROPS 4
 #define H_RAIN_MS_DELAY 20
